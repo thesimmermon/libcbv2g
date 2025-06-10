@@ -1,4 +1,4 @@
-add_library(cbv2g_exi_codec)
+add_library(cbv2g_exi_codec STATIC)
 add_library(cbv2g::exi_codec ALIAS cbv2g_exi_codec)
 set_property(TARGET cbv2g_exi_codec PROPERTY EXPORT_NAME exi_codec)
 
@@ -21,7 +21,7 @@ target_include_directories(cbv2g_exi_codec
 
 target_compile_features(cbv2g_exi_codec PRIVATE c_std_99)
 
-add_library(cbv2g_din)
+add_library(cbv2g_din SHARED)
 add_library(cbv2g::din ALIAS cbv2g_din)
 set_property(TARGET cbv2g_din PROPERTY EXPORT_NAME din)
 
@@ -48,7 +48,7 @@ target_link_libraries(cbv2g_din
 
 target_compile_features(cbv2g_din PUBLIC c_std_99)
 
-add_library(cbv2g_iso2)
+add_library(cbv2g_iso2 SHARED)
 add_library(cbv2g::iso2 ALIAS cbv2g_iso2)
 set_property(TARGET cbv2g_iso2 PROPERTY EXPORT_NAME iso2)
 
@@ -68,6 +68,11 @@ target_include_directories(cbv2g_iso2
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
+target_compile_definitions(cbv2g_iso2
+    PRIVATE
+        CBV2G_ISO2_EXPORTS
+)
+
 target_link_libraries(cbv2g_iso2
     PUBLIC
         cbv2g::exi_codec
@@ -75,7 +80,7 @@ target_link_libraries(cbv2g_iso2
 
 target_compile_features(cbv2g_iso2 PUBLIC c_std_99)
 
-add_library(cbv2g_iso20)
+add_library(cbv2g_iso20 SHARED)
 add_library(cbv2g::iso20 ALIAS cbv2g_iso20)
 set_property(TARGET cbv2g_iso20 PROPERTY EXPORT_NAME iso20)
 
@@ -114,10 +119,9 @@ target_link_libraries(cbv2g_iso20
 
 target_compile_features(cbv2g_iso20 PUBLIC c_std_99)
 
-add_library(cbv2g_tp)
+add_library(cbv2g_tp SHARED)
 add_library(cbv2g::tp ALIAS cbv2g_tp)
 set_property(TARGET cbv2g_tp PROPERTY EXPORT_NAME tp)
-
 
 target_sources(cbv2g_tp
     PRIVATE
@@ -131,3 +135,66 @@ target_include_directories(cbv2g_tp
 )
 
 target_compile_features(cbv2g_tp PUBLIC c_std_99)
+
+add_library(cbv2g_json_shim SHARED)
+add_library(cbv2g::json_shim ALIAS cbv2g_json_shim)
+set_property(TARGET cbv2g_json_shim PROPERTY EXPORT_NAME json_shim)
+
+target_sources(cbv2g_json_shim
+    PRIVATE
+        cert_install_shim.c
+        ${PROJECT_SOURCE_DIR}/third_party/cjson/cJSON.c
+)
+
+target_include_directories(cbv2g_json_shim
+    PUBLIC
+        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/third_party/cjson
+)
+
+target_compile_definitions(cbv2g_json_shim
+    PRIVATE
+        CBV2G_JSON_SHIM_EXPORTS
+)
+
+target_link_libraries(cbv2g_json_shim
+    PUBLIC
+        cbv2g::iso2
+)
+
+# Add explicit dependencies to ensure correct build order
+add_dependencies(cbv2g_json_shim cbv2g_iso2)
+add_dependencies(cbv2g_iso2 cbv2g_exi_codec)
+
+target_compile_features(cbv2g_json_shim PUBLIC c_std_99)
+
+# Set output directories for Windows builds
+if(WIN32)
+    # Set common output directories for all configurations
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+
+    # For shared libraries, ensure import libraries are generated in the correct location
+    set_target_properties(cbv2g_din cbv2g_iso2 cbv2g_iso20 cbv2g_tp cbv2g_json_shim PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+        ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+        PREFIX ""
+        IMPORT_PREFIX ""
+        IMPORT_SUFFIX ".lib"
+        WINDOWS_EXPORT_ALL_SYMBOLS ON
+    )
+
+    # For static library
+    set_target_properties(cbv2g_exi_codec PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+        ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+    )
+
+    # Add the lib directory to the linker search paths
+    link_directories("${CMAKE_BINARY_DIR}/lib")
+endif()

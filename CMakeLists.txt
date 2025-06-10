@@ -33,6 +33,7 @@ if (CB_V2G_INSTALL)
             cbv2g_iso2
             cbv2g_iso20
             cbv2g_tp
+            cbv2g_json_shim
         EXPORT cbv2g-targets
         LIBRARY
     )
