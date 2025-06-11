@@ -47,7 +47,91 @@ DLL_PUBLIC int iso2_certificate_installation_req_decode_exi_to_json(
 );
 
 /**
- * @brief Frees memory allocated by the ISO-15118-2 shim functions
+ * @brief Encodes a JSON string to EXI format for ISO-15118-2 CertificateInstallationRes
+ * 
+ * @param json_str Input JSON string
+ * @param exi_buffer Output buffer for EXI data (will be allocated)
+ * @param exi_size Size of the EXI data
+ * @return int 0 on success, negative value on error
+ */
+DLL_PUBLIC int iso2_certificate_installation_res_encode_json_to_exi(
+    const char* json_str,
+    uint8_t** exi_buffer,
+    size_t* exi_size
+);
+
+/**
+ * @brief Decodes EXI data to JSON string for ISO-15118-2 CertificateInstallationRes
+ * 
+ * @param exi_buffer Input EXI data
+ * @param exi_size Size of the EXI data
+ * @param json_str Output JSON string (will be allocated)
+ * @return int 0 on success, negative value on error
+ */
+DLL_PUBLIC int iso2_certificate_installation_res_decode_exi_to_json(
+    const uint8_t* exi_buffer,
+    size_t exi_size,
+    char** json_str
+);
+
+/**
+ * @brief Encodes a JSON string to EXI format for ISO-20 CertificateInstallationReq
+ * 
+ * @param json_str Input JSON string
+ * @param exi_buffer Output buffer for EXI data (will be allocated)
+ * @param exi_size Size of the EXI data
+ * @return int 0 on success, negative value on error
+ */
+DLL_PUBLIC int iso20_certificate_installation_req_encode_json_to_exi(
+    const char* json_str,
+    uint8_t** exi_buffer,
+    size_t* exi_size
+);
+
+/**
+ * @brief Decodes EXI data to JSON string for ISO-20 CertificateInstallationReq
+ * 
+ * @param exi_buffer Input EXI data
+ * @param exi_size Size of the EXI data
+ * @param json_str Output JSON string (will be allocated)
+ * @return int 0 on success, negative value on error
+ */
+DLL_PUBLIC int iso20_certificate_installation_req_decode_exi_to_json(
+    const uint8_t* exi_buffer,
+    size_t exi_size,
+    char** json_str
+);
+
+/**
+ * @brief Encodes a JSON string to EXI format for ISO-20 CertificateInstallationRes
+ * 
+ * @param json_str Input JSON string
+ * @param exi_buffer Output buffer for EXI data (will be allocated)
+ * @param exi_size Size of the EXI data
+ * @return int 0 on success, negative value on error
+ */
+DLL_PUBLIC int iso20_certificate_installation_res_encode_json_to_exi(
+    const char* json_str,
+    uint8_t** exi_buffer,
+    size_t* exi_size
+);
+
+/**
+ * @brief Decodes EXI data to JSON string for ISO-20 CertificateInstallationRes
+ * 
+ * @param exi_buffer Input EXI data
+ * @param exi_size Size of the EXI data
+ * @param json_str Output JSON string (will be allocated)
+ * @return int 0 on success, negative value on error
+ */
+DLL_PUBLIC int iso20_certificate_installation_res_decode_exi_to_json(
+    const uint8_t* exi_buffer,
+    size_t exi_size,
+    char** json_str
+);
+
+/**
+ * @brief Frees memory allocated by the ISO-15118 shim functions
  * 
  * @param ptr Pointer to memory to free
  */

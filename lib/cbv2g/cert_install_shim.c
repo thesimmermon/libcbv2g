@@ -396,4 +396,37 @@ void iso2_certificate_installation_req_free(void* ptr) {
     if (ptr) {
         free(ptr);
     }
+}
+
+// ISO-2 Certificate Installation Response stubs
+int iso2_certificate_installation_res_encode_json_to_exi(const char* json_str, uint8_t** exi_buffer, size_t* exi_size) {
+    // TODO: Implement ISO-2 Certificate Installation Response encoding
+    return -1;
+}
+
+int iso2_certificate_installation_res_decode_exi_to_json(const uint8_t* exi_buffer, size_t exi_size, char** json_str) {
+    // TODO: Implement ISO-2 Certificate Installation Response decoding
+    return -1;
+}
+
+// ISO-20 Certificate Installation Request stubs
+int iso20_certificate_installation_req_encode_json_to_exi(const char* json_str, uint8_t** exi_buffer, size_t* exi_size) {
+    // TODO: Implement ISO-20 Certificate Installation Request encoding
+    return -1;
+}
+
+int iso20_certificate_installation_req_decode_exi_to_json(const uint8_t* exi_buffer, size_t exi_size, char** json_str) {
+    // TODO: Implement ISO-20 Certificate Installation Request decoding
+    return -1;
+}
+
+// ISO-20 Certificate Installation Response stubs
+int iso20_certificate_installation_res_encode_json_to_exi(const char* json_str, uint8_t** exi_buffer, size_t* exi_size) {
+    // TODO: Implement ISO-20 Certificate Installation Response encoding
+    return -1;
+}
+
+int iso20_certificate_installation_res_decode_exi_to_json(const uint8_t* exi_buffer, size_t exi_size, char** json_str) {
+    // TODO: Implement ISO-20 Certificate Installation Response decoding
+    return -1;
 } 
