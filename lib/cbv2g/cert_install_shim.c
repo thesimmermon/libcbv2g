@@ -437,8 +437,21 @@ int iso2_certificate_installation_res_encode_json_to_exi(const char* json_str, u
     fflush(stdout);
     cJSON* response_code = cJSON_GetObjectItem(root, "ResponseCode");
     if (response_code && response_code->valuestring) {
-        // Map string to enum (assume helper function exists or add mapping as needed)
-        res->ResponseCode = iso2_responseCodeType_OK; // TODO: Map string to enum
+        // Map string to enum
+        if (strcmp(response_code->valuestring, "OK") == 0) {
+            res->ResponseCode = iso2_responseCodeType_OK;
+        } else if (strcmp(response_code->valuestring, "FAILED") == 0) {
+            res->ResponseCode = iso2_responseCodeType_FAILED;
+        } else if (strcmp(response_code->valuestring, "FAILED_SequenceError") == 0) {
+            res->ResponseCode = iso2_responseCodeType_FAILED_SequenceError;
+        } else if (strcmp(response_code->valuestring, "FAILED_ServiceIDInvalid") == 0) {
+            res->ResponseCode = iso2_responseCodeType_FAILED_ServiceIDInvalid;
+        } else if (strcmp(response_code->valuestring, "FAILED_UnknownSession") == 0) {
+            res->ResponseCode = iso2_responseCodeType_FAILED_UnknownSession;
+        } else {
+            // Default to FAILED if unknown response code
+            res->ResponseCode = iso2_responseCodeType_FAILED;
+        }
     }
 
     // Get SAProvisioningCertificateChain from JSON
@@ -446,8 +459,48 @@ int iso2_certificate_installation_res_encode_json_to_exi(const char* json_str, u
     fflush(stdout);
     cJSON* sa_chain = cJSON_GetObjectItem(root, "SAProvisioningCertificateChain");
     if (sa_chain) {
-        // TODO: Fill iso2_CertificateChainType from JSON
-        // Use helper to parse chain fields (Id, Certificate, SubCertificates)
+        // Get Id
+        cJSON* id = cJSON_GetObjectItem(sa_chain, "Id");
+        if (id && id->valuestring) {
+            size_t len = strlen(id->valuestring);
+            if (len < iso2_Id_CHARACTER_SIZE && len <= UINT16_MAX) {
+                memcpy(res->SAProvisioningCertificateChain.Id.characters, id->valuestring, len);
+                res->SAProvisioningCertificateChain.Id.charactersLen = (uint16_t)len;
+                res->SAProvisioningCertificateChain.Id_isUsed = 1;
+            }
+        }
+
+        // Get Certificate
+        cJSON* cert = cJSON_GetObjectItem(sa_chain, "Certificate");
+        if (cert && cert->valuestring) {
+            size_t len = strlen(cert->valuestring);
+            if (len < iso2_certificateType_BYTES_SIZE && len <= UINT16_MAX) {
+                memcpy(res->SAProvisioningCertificateChain.Certificate.bytes, cert->valuestring, len);
+                res->SAProvisioningCertificateChain.Certificate.bytesLen = (uint16_t)len;
+            }
+        }
+
+        // Get SubCertificates
+        cJSON* sub_certs = cJSON_GetObjectItem(sa_chain, "SubCertificates");
+        if (sub_certs && cJSON_IsArray(sub_certs)) {
+            int num_sub_certs = cJSON_GetArraySize(sub_certs);
+            if (num_sub_certs > 0 && num_sub_certs <= iso2_certificateType_4_ARRAY_SIZE) {
+                res->SAProvisioningCertificateChain.SubCertificates.Certificate.arrayLen = (uint16_t)num_sub_certs;
+                res->SAProvisioningCertificateChain.SubCertificates_isUsed = 1;
+                
+                for (int i = 0; i < num_sub_certs; i++) {
+                    cJSON* sub_cert = cJSON_GetArrayItem(sub_certs, i);
+                    if (sub_cert && sub_cert->valuestring) {
+                        size_t len = strlen(sub_cert->valuestring);
+                        if (len < iso2_certificateType_BYTES_SIZE && len <= UINT16_MAX) {
+                            memcpy(res->SAProvisioningCertificateChain.SubCertificates.Certificate.array[i].bytes, 
+                                   sub_cert->valuestring, len);
+                            res->SAProvisioningCertificateChain.SubCertificates.Certificate.array[i].bytesLen = (uint16_t)len;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // Get ContractSignatureCertChain from JSON
@@ -455,7 +508,48 @@ int iso2_certificate_installation_res_encode_json_to_exi(const char* json_str, u
     fflush(stdout);
     cJSON* contract_chain = cJSON_GetObjectItem(root, "ContractSignatureCertChain");
     if (contract_chain) {
-        // TODO: Fill iso2_CertificateChainType from JSON
+        // Get Id
+        cJSON* id = cJSON_GetObjectItem(contract_chain, "Id");
+        if (id && id->valuestring) {
+            size_t len = strlen(id->valuestring);
+            if (len < iso2_Id_CHARACTER_SIZE && len <= UINT16_MAX) {
+                memcpy(res->ContractSignatureCertChain.Id.characters, id->valuestring, len);
+                res->ContractSignatureCertChain.Id.charactersLen = (uint16_t)len;
+                res->ContractSignatureCertChain.Id_isUsed = 1;
+            }
+        }
+
+        // Get Certificate
+        cJSON* cert = cJSON_GetObjectItem(contract_chain, "Certificate");
+        if (cert && cert->valuestring) {
+            size_t len = strlen(cert->valuestring);
+            if (len < iso2_certificateType_BYTES_SIZE && len <= UINT16_MAX) {
+                memcpy(res->ContractSignatureCertChain.Certificate.bytes, cert->valuestring, len);
+                res->ContractSignatureCertChain.Certificate.bytesLen = (uint16_t)len;
+            }
+        }
+
+        // Get SubCertificates
+        cJSON* sub_certs = cJSON_GetObjectItem(contract_chain, "SubCertificates");
+        if (sub_certs && cJSON_IsArray(sub_certs)) {
+            int num_sub_certs = cJSON_GetArraySize(sub_certs);
+            if (num_sub_certs > 0 && num_sub_certs <= iso2_certificateType_4_ARRAY_SIZE) {
+                res->ContractSignatureCertChain.SubCertificates.Certificate.arrayLen = (uint16_t)num_sub_certs;
+                res->ContractSignatureCertChain.SubCertificates_isUsed = 1;
+                
+                for (int i = 0; i < num_sub_certs; i++) {
+                    cJSON* sub_cert = cJSON_GetArrayItem(sub_certs, i);
+                    if (sub_cert && sub_cert->valuestring) {
+                        size_t len = strlen(sub_cert->valuestring);
+                        if (len < iso2_certificateType_BYTES_SIZE && len <= UINT16_MAX) {
+                            memcpy(res->ContractSignatureCertChain.SubCertificates.Certificate.array[i].bytes, 
+                                   sub_cert->valuestring, len);
+                            res->ContractSignatureCertChain.SubCertificates.Certificate.array[i].bytesLen = (uint16_t)len;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // Get ContractSignatureEncryptedPrivateKey from JSON
@@ -463,7 +557,25 @@ int iso2_certificate_installation_res_encode_json_to_exi(const char* json_str, u
     fflush(stdout);
     cJSON* encrypted_key = cJSON_GetObjectItem(root, "ContractSignatureEncryptedPrivateKey");
     if (encrypted_key) {
-        // TODO: Fill iso2_ContractSignatureEncryptedPrivateKeyType from JSON
+        // Get Id
+        cJSON* id = cJSON_GetObjectItem(encrypted_key, "Id");
+        if (id && id->valuestring) {
+            size_t len = strlen(id->valuestring);
+            if (len < iso2_Id_CHARACTER_SIZE && len <= UINT16_MAX) {
+                memcpy(res->ContractSignatureEncryptedPrivateKey.Id.characters, id->valuestring, len);
+                res->ContractSignatureEncryptedPrivateKey.Id.charactersLen = (uint16_t)len;
+            }
+        }
+
+        // Get CONTENT
+        cJSON* content = cJSON_GetObjectItem(encrypted_key, "CONTENT");
+        if (content && content->valuestring) {
+            size_t len = strlen(content->valuestring);
+            if (len < iso2_ContractSignatureEncryptedPrivateKeyType_BYTES_SIZE && len <= UINT16_MAX) {
+                memcpy(res->ContractSignatureEncryptedPrivateKey.CONTENT.bytes, content->valuestring, len);
+                res->ContractSignatureEncryptedPrivateKey.CONTENT.bytesLen = (uint16_t)len;
+            }
+        }
     }
 
     // Get DHpublickey from JSON
@@ -471,7 +583,25 @@ int iso2_certificate_installation_res_encode_json_to_exi(const char* json_str, u
     fflush(stdout);
     cJSON* dh_pubkey = cJSON_GetObjectItem(root, "DHpublickey");
     if (dh_pubkey) {
-        // TODO: Fill iso2_DiffieHellmanPublickeyType from JSON
+        // Get Id
+        cJSON* id = cJSON_GetObjectItem(dh_pubkey, "Id");
+        if (id && id->valuestring) {
+            size_t len = strlen(id->valuestring);
+            if (len < iso2_Id_CHARACTER_SIZE && len <= UINT16_MAX) {
+                memcpy(res->DHpublickey.Id.characters, id->valuestring, len);
+                res->DHpublickey.Id.charactersLen = (uint16_t)len;
+            }
+        }
+
+        // Get CONTENT
+        cJSON* content = cJSON_GetObjectItem(dh_pubkey, "CONTENT");
+        if (content && content->valuestring) {
+            size_t len = strlen(content->valuestring);
+            if (len < iso2_DiffieHellmanPublickeyType_BYTES_SIZE && len <= UINT16_MAX) {
+                memcpy(res->DHpublickey.CONTENT.bytes, content->valuestring, len);
+                res->DHpublickey.CONTENT.bytesLen = (uint16_t)len;
+            }
+        }
     }
 
     // Get eMAID from JSON
@@ -484,8 +614,38 @@ int iso2_certificate_installation_res_encode_json_to_exi(const char* json_str, u
         memcpy(res->eMAID.CONTENT.characters, emaid->valuestring, len);
     }
 
-    // Estimate required buffer size (use similar logic as req)
-    size_t required_size = 1024; // TODO: Calculate more precisely if needed
+    // Estimate required buffer size based on the response structure
+    size_t required_size = 0;
+    
+    // Base overhead for EXI encoding
+    required_size += 100;  // EXI header and basic structure overhead
+    
+    // Add size for each certificate chain (Id + Certificate + SubCertificates)
+    required_size += res->SAProvisioningCertificateChain.Id.charactersLen;
+    required_size += res->SAProvisioningCertificateChain.Certificate.bytesLen;
+    if (res->SAProvisioningCertificateChain.SubCertificates_isUsed) {
+        for (int i = 0; i < res->SAProvisioningCertificateChain.SubCertificates.Certificate.arrayLen; i++) {
+            required_size += res->SAProvisioningCertificateChain.SubCertificates.Certificate.array[i].bytesLen;
+        }
+    }
+    
+    required_size += res->ContractSignatureCertChain.Id.charactersLen;
+    required_size += res->ContractSignatureCertChain.Certificate.bytesLen;
+    if (res->ContractSignatureCertChain.SubCertificates_isUsed) {
+        for (int i = 0; i < res->ContractSignatureCertChain.SubCertificates.Certificate.arrayLen; i++) {
+            required_size += res->ContractSignatureCertChain.SubCertificates.Certificate.array[i].bytesLen;
+        }
+    }
+    
+    // Add size for encrypted private key
+    required_size += res->ContractSignatureEncryptedPrivateKey.Id.charactersLen;
+    required_size += res->ContractSignatureEncryptedPrivateKey.CONTENT.bytesLen;
+    
+    // Add size for DH public key
+    required_size += res->DHpublickey.Id.charactersLen;
+    required_size += res->DHpublickey.CONTENT.bytesLen;
+    
+    // Add padding for safety
     required_size += 100;
 
     printf("DEBUG: Required buffer size: %zu\n", required_size);
