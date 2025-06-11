@@ -20,15 +20,43 @@ static int base64_to_binary(const char* base64, uint8_t** binary, size_t* binary
     *binary = (uint8_t*)malloc(*binary_len);
     if (!*binary) return -1;
 
-    // Simple base64 decode implementation
-    // In production, use a proper base64 library
-    for (size_t i = 0, j = 0; i < base64_len; i += 4, j += 3) {
-        uint32_t sextet_a = base64[i] == '=' ? 0 : (base64[i] - 'A');
-        uint32_t sextet_b = base64[i + 1] == '=' ? 0 : (base64[i + 1] - 'A');
-        uint32_t sextet_c = base64[i + 2] == '=' ? 0 : (base64[i + 2] - 'A');
-        uint32_t sextet_d = base64[i + 3] == '=' ? 0 : (base64[i + 3] - 'A');
+    // Base64 decoding table
+    static const int8_t b64_lookup[256] = {
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,  /* 00-0F */
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,  /* 10-1F */
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,62,-1,-1,-1,63,  /* 20-2F */
+        52,53,54,55,56,57,58,59,60,61,-1,-1,-1,-1,-1,-1,  /* 30-3F */
+        -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,  /* 40-4F */
+        15,16,17,18,19,20,21,22,23,24,25,-1,-1,-1,-1,-1,  /* 50-5F */
+        -1,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,  /* 60-6F */
+        41,42,43,44,45,46,47,48,49,50,51,-1,-1,-1,-1,-1,  /* 70-7F */
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,  /* 80-8F */
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,  /* 90-9F */
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,  /* A0-AF */
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,  /* B0-BF */
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,  /* C0-CF */
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,  /* D0-DF */
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,  /* E0-EF */
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1   /* F0-FF */
+    };
 
-        uint32_t triple = (sextet_a << 18) | (sextet_b << 12) | (sextet_c << 6) | sextet_d;
+    for (size_t i = 0, j = 0; i < base64_len; i += 4, j += 3) {
+        uint32_t sextet_a = b64_lookup[(unsigned char)base64[i]];
+        uint32_t sextet_b = b64_lookup[(unsigned char)base64[i + 1]];
+        uint32_t sextet_c = b64_lookup[(unsigned char)base64[i + 2]];
+        uint32_t sextet_d = b64_lookup[(unsigned char)base64[i + 3]];
+
+        if (sextet_a == -1 || sextet_b == -1 || 
+            (sextet_c == -1 && base64[i + 2] != '=') || 
+            (sextet_d == -1 && base64[i + 3] != '=')) {
+            free(*binary);
+            *binary = NULL;
+            return -1;
+        }
+
+        uint32_t triple = (sextet_a << 18) | (sextet_b << 12) |
+                         ((sextet_c == -1 ? 0 : sextet_c) << 6) |
+                         (sextet_d == -1 ? 0 : sextet_d);
 
         if (j < *binary_len) (*binary)[j] = (triple >> 16) & 0xFF;
         if (j + 1 < *binary_len) (*binary)[j + 1] = (triple >> 8) & 0xFF;
@@ -107,16 +135,11 @@ int iso2_cert_install_encode_json_to_exi(const char* json_str, uint8_t** exi_buf
     struct iso2_exiDocument exi_doc;
     memset(&exi_doc, 0, sizeof(exi_doc));
 
-    // Initialize the V2G message
-    printf("DEBUG: Initializing V2G message\n");
-    fflush(stdout);
+    // Initialize the V2G message and Body and CertificateInstallationReq
     init_iso2_V2G_Message(&exi_doc.V2G_Message);
-
-    // Set up CertificateInstallationReq in the Body
-    printf("DEBUG: Setting up CertificateInstallationReq\n");
-    fflush(stdout);
+    init_iso2_BodyType(&exi_doc.V2G_Message.Body);
+    init_iso2_CertificateInstallationReqType(&exi_doc.V2G_Message.Body.CertificateInstallationReq);
     exi_doc.V2G_Message.Body.CertificateInstallationReq_isUsed = 1;
-    struct iso2_CertificateInstallationReqType* cert_req = &exi_doc.V2G_Message.Body.CertificateInstallationReq;
 
     // Get SessionID from JSON
     printf("DEBUG: Getting SessionID from JSON\n");
@@ -124,15 +147,15 @@ int iso2_cert_install_encode_json_to_exi(const char* json_str, uint8_t** exi_buf
     cJSON* session_id = cJSON_GetObjectItem(root, "SessionID");
     if (session_id && session_id->valuestring) {
         size_t len = strlen(session_id->valuestring);
-        // Ensure session ID is exactly 8 bytes
-        exi_doc.V2G_Message.Header.SessionID.bytesLen = 8; // Always 8 bytes
-        memset(exi_doc.V2G_Message.Header.SessionID.bytes, 0, 8); // Zero out the buffer
-        memcpy(exi_doc.V2G_Message.Header.SessionID.bytes, session_id->valuestring, 
-               len > 8 ? 8 : len); // Copy up to 8 bytes
+        exi_doc.V2G_Message.Header.SessionID.bytesLen = iso2_sessionIDType_BYTES_SIZE; // Always 8
+        memset(exi_doc.V2G_Message.Header.SessionID.bytes, 0, iso2_sessionIDType_BYTES_SIZE); // Zero out
+        memcpy(exi_doc.V2G_Message.Header.SessionID.bytes, session_id->valuestring, len > iso2_sessionIDType_BYTES_SIZE ? iso2_sessionIDType_BYTES_SIZE : len); // Copy up to 8
+        printf("DEBUG: session_id && valuestring-exi_doc.V2G_Message.Header.SessionID.bytesLen = %u\n", exi_doc.V2G_Message.Header.SessionID.bytesLen);
+
     } else {
-        // If no session ID provided, initialize with zeros
-        exi_doc.V2G_Message.Header.SessionID.bytesLen = 8;
-        memset(exi_doc.V2G_Message.Header.SessionID.bytes, 0, 8);
+        exi_doc.V2G_Message.Header.SessionID.bytesLen = iso2_sessionIDType_BYTES_SIZE;
+        memset(exi_doc.V2G_Message.Header.SessionID.bytes, 0, iso2_sessionIDType_BYTES_SIZE);
+        printf("DEBUG: esle - exi_doc.V2G_Message.Header.SessionID.bytesLen = %u\n", exi_doc.V2G_Message.Header.SessionID.bytesLen);
     }
 
     // Get Id from JSON
@@ -141,8 +164,8 @@ int iso2_cert_install_encode_json_to_exi(const char* json_str, uint8_t** exi_buf
     cJSON* id = cJSON_GetObjectItem(root, "Id");
     if (id && id->valuestring) {
         size_t len = strlen(id->valuestring);
-        cert_req->Id.charactersLen = (uint16_t)len;
-        memcpy(cert_req->Id.characters, id->valuestring, len);
+        exi_doc.V2G_Message.Body.CertificateInstallationReq.Id.charactersLen = (uint16_t)len;
+        memcpy(exi_doc.V2G_Message.Body.CertificateInstallationReq.Id.characters, id->valuestring, len);
     }
 
     // Get OEMProvisioningCert from JSON
@@ -153,8 +176,8 @@ int iso2_cert_install_encode_json_to_exi(const char* json_str, uint8_t** exi_buf
         uint8_t* binary_cert;
         size_t cert_len;
         if (base64_to_binary(oem_cert->valuestring, &binary_cert, &cert_len) == 0) {
-            cert_req->OEMProvisioningCert.bytesLen = (uint16_t)cert_len;
-            memcpy(cert_req->OEMProvisioningCert.bytes, binary_cert, cert_len);
+            exi_doc.V2G_Message.Body.CertificateInstallationReq.OEMProvisioningCert.bytesLen = (uint16_t)cert_len;
+            memcpy(exi_doc.V2G_Message.Body.CertificateInstallationReq.OEMProvisioningCert.bytes, binary_cert, cert_len);
             free(binary_cert);
         }
     }
@@ -165,7 +188,7 @@ int iso2_cert_install_encode_json_to_exi(const char* json_str, uint8_t** exi_buf
     cJSON* root_certs = cJSON_GetObjectItem(root, "ListOfRootCertificateIDs");
     if (root_certs && cJSON_IsArray(root_certs)) {
         int array_size = cJSON_GetArraySize(root_certs);
-        cert_req->ListOfRootCertificateIDs.RootCertificateID.arrayLen = array_size;
+        exi_doc.V2G_Message.Body.CertificateInstallationReq.ListOfRootCertificateIDs.RootCertificateID.arrayLen = array_size;
         for (int i = 0; i < array_size; i++) {
             cJSON* cert = cJSON_GetArrayItem(root_certs, i);
             if (cert) {
@@ -173,11 +196,11 @@ int iso2_cert_install_encode_json_to_exi(const char* json_str, uint8_t** exi_buf
                 cJSON* serial = cJSON_GetObjectItem(cert, "X509SerialNumber");
                 if (issuer && issuer->valuestring) {
                     size_t len = strlen(issuer->valuestring);
-                    cert_req->ListOfRootCertificateIDs.RootCertificateID.array[i].X509IssuerName.charactersLen = (uint16_t)len;
-                    memcpy(cert_req->ListOfRootCertificateIDs.RootCertificateID.array[i].X509IssuerName.characters, issuer->valuestring, len);
+                    exi_doc.V2G_Message.Body.CertificateInstallationReq.ListOfRootCertificateIDs.RootCertificateID.array[i].X509IssuerName.charactersLen = (uint16_t)len;
+                    memcpy(exi_doc.V2G_Message.Body.CertificateInstallationReq.ListOfRootCertificateIDs.RootCertificateID.array[i].X509IssuerName.characters, issuer->valuestring, len);
                 }
                 if (serial && serial->valuedouble) {
-                    double_to_exi_signed(serial->valuedouble, &cert_req->ListOfRootCertificateIDs.RootCertificateID.array[i].X509SerialNumber);
+                    double_to_exi_signed(serial->valuedouble, &exi_doc.V2G_Message.Body.CertificateInstallationReq.ListOfRootCertificateIDs.RootCertificateID.array[i].X509SerialNumber);
                 }
             }
         }
@@ -201,47 +224,65 @@ int iso2_cert_install_encode_json_to_exi(const char* json_str, uint8_t** exi_buf
     printf("DEBUG: exi_doc.V2G_Message.Body.CertificateInstallationReq.ListOfRootCertificateIDs.RootCertificateID.arrayLen = %u\n", exi_doc.V2G_Message.Body.CertificateInstallationReq.ListOfRootCertificateIDs.RootCertificateID.arrayLen);
     fflush(stdout);
 
+    // Calculate required buffer size
+    size_t required_size = 0;
+    // Add size for header
+    required_size += 1; // EXI header
+    // Add size for session ID
+    required_size += 8; // SessionID is 8 bytes
+    // Add size for certificate installation request
+    required_size += 26; // Id length
+    required_size += 708; // OEMProvisioningCert length
+    required_size += 2; // ListOfRootCertificateIDs array length
+    // Add some padding for safety
+    required_size += 100;
+
+    printf("DEBUG: Required buffer size: %zu\n", required_size);
+
+    // Allocate buffer if needed
+    if (*exi_size == 0 || *exi_buffer == NULL) {
+        printf("DEBUG: Allocating new buffer of size %zu\n", required_size);
+        *exi_buffer = (uint8_t*)malloc(required_size);
+        if (*exi_buffer == NULL) {
+            printf("DEBUG: Failed to allocate buffer\n");
+            return -1;
+        }
+        *exi_size = required_size;
+    } else if (*exi_size < required_size) {
+        printf("DEBUG: Reallocating buffer from %zu to %zu\n", *exi_size, required_size);
+        uint8_t* new_buffer = (uint8_t*)realloc(*exi_buffer, required_size);
+        if (new_buffer == NULL) {
+            printf("DEBUG: Failed to reallocate buffer\n");
+            return -1;
+        }
+        *exi_buffer = new_buffer;
+        *exi_size = required_size;
+    }
+
     // Initialize bitstream
-    printf("DEBUG: Initializing bitstream\n");
-    fflush(stdout);
+    printf("DEBUG: About to initialize bitstream\n");
+    printf("DEBUG: exi_buffer size: %zu\n", *exi_size);
     exi_bitstream_t stream;
-    stream.data = NULL;
-    stream.data_size = 0;
-    stream.byte_pos = 0;
-    stream.bit_count = 0;
-    stream._init_called = 0;
-    stream._flag_byte_pos = 0;
-    stream.status_callback = NULL;
+    exi_bitstream_init(&stream, *exi_buffer, *exi_size, 0, NULL);
+    printf("DEBUG: Bitstream initialized successfully\n");
+    printf("DEBUG: stream.data_size: %zu\n", stream.data_size);
+    printf("DEBUG: stream.byte_pos: %zu\n", stream.byte_pos);
 
     // Encode to EXI
-    printf("DEBUG: Encoding to EXI\n");
-    fflush(stdout);
-    int errn = encode_iso2_exiDocument(&stream, &exi_doc);
-    if (errn != 0) {
-        printf("DEBUG: Error: encode_iso2_exiDocument failed\n");
-        fflush(stdout);
-        cJSON_Delete(root);
-        return -3;
+    printf("DEBUG: About to encode to EXI\n");
+    int err = encode_iso2_exiDocument(&stream, &exi_doc);
+    if (err != 0) {
+        printf("DEBUG: Failed to encode to EXI with error code: %d\n", err);
+        printf("DEBUG: Final stream.byte_pos: %zu\n", stream.byte_pos);
+        printf("DEBUG: Final stream.bit_count: %u\n", stream.bit_count);
+        return err;
     }
+    printf("DEBUG: EXI encoding completed successfully\n");
 
-    // Allocate and copy output buffer
-    printf("DEBUG: Allocating and copying output buffer\n");
-    fflush(stdout);
+    // Get the actual size of the encoded data
+    printf("DEBUG: About to get encoded size\n");
     *exi_size = exi_bitstream_get_length(&stream);
-    printf("DEBUG: exi_size = %zu\n", *exi_size);
-    fflush(stdout);
-    *exi_buffer = (uint8_t*)malloc(*exi_size);
-    printf("DEBUG: exi_buffer allocated at %p\n", (void*)*exi_buffer);
-    fflush(stdout);
-    if (!*exi_buffer) {
-        printf("DEBUG: Error: malloc failed\n");
-        fflush(stdout);
-        cJSON_Delete(root);
-        return -4;
-    }
-    memcpy(*exi_buffer, stream.data, *exi_size);
-    printf("DEBUG: memcpy to exi_buffer done\n");
-    fflush(stdout);
+    printf("DEBUG: Final encoded size: %zu\n", *exi_size);
 
     // Cleanup
     cJSON_Delete(root);

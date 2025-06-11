@@ -28,7 +28,7 @@ def test_cert_install_shim():
 
     # Create test data
     test_data = {
-        "SessionID": "1234567890",
+        "SessionID": "12345678",
         "Id": "CertificateInstallationReq",
         "OEMProvisioningCert": base64.b64encode(sample_cert).decode('utf-8'),
         "ListOfRootCertificateIDs": [
