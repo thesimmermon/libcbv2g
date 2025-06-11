@@ -13,14 +13,14 @@ else:
     lib = ctypes.CDLL(os.path.join(os.path.dirname(__file__), '../../build/lib/libcbv2g_json_shim.so'))
 
 # Define function signatures
-lib.iso2_cert_install_encode_json_to_exi.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.POINTER(ctypes.c_uint8)), ctypes.POINTER(ctypes.c_size_t)]
-lib.iso2_cert_install_encode_json_to_exi.restype = ctypes.c_int
+lib.iso2_certificate_installation_req_encode_json_to_exi.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.POINTER(ctypes.c_uint8)), ctypes.POINTER(ctypes.c_size_t)]
+lib.iso2_certificate_installation_req_encode_json_to_exi.restype = ctypes.c_int
 
-lib.iso2_cert_install_decode_exi_to_json.argtypes = [ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t, ctypes.POINTER(ctypes.c_char_p)]
-lib.iso2_cert_install_decode_exi_to_json.restype = ctypes.c_int
+lib.iso2_certificate_installation_req_decode_exi_to_json.argtypes = [ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t, ctypes.POINTER(ctypes.c_char_p)]
+lib.iso2_certificate_installation_req_decode_exi_to_json.restype = ctypes.c_int
 
-lib.iso2_cert_install_free.argtypes = [ctypes.c_void_p]
-lib.iso2_cert_install_free.restype = None
+lib.iso2_certificate_installation_req_free.argtypes = [ctypes.c_void_p]
+lib.iso2_certificate_installation_req_free.restype = None
 
 def test_cert_install_shim():
     # Create a sample certificate installation request
@@ -50,17 +50,17 @@ def test_cert_install_shim():
     exi_buffer = ctypes.POINTER(ctypes.c_uint8)()
     exi_buffer_ptr = ctypes.pointer(exi_buffer)
     exi_size = ctypes.c_size_t()
-    result = lib.iso2_cert_install_encode_json_to_exi(json_str, exi_buffer_ptr, ctypes.byref(exi_size))
+    result = lib.iso2_certificate_installation_req_encode_json_to_exi(json_str, exi_buffer_ptr, ctypes.byref(exi_size))
     if result != 0:
         print(f"Error encoding JSON to EXI: {result}")
         return False
 
     # Decode EXI back to JSON
     json_str_out = ctypes.c_char_p()
-    result = lib.iso2_cert_install_decode_exi_to_json(exi_buffer, exi_size, ctypes.byref(json_str_out))
+    result = lib.iso2_certificate_installation_req_decode_exi_to_json(exi_buffer, exi_size, ctypes.byref(json_str_out))
     if result != 0:
         print(f"Error decoding EXI to JSON: {result}")
-        lib.iso2_cert_install_free(exi_buffer)
+        lib.iso2_certificate_installation_req_free(exi_buffer)
         return False
 
     # Parse the decoded JSON
@@ -69,6 +69,8 @@ def test_cert_install_shim():
     # Compare the original and decoded data
     if decoded_data == test_data:
         print("Test passed: JSON -> EXI -> JSON round trip successful")
+        print("Original:", test_data)
+        print("Decoded:", decoded_data)
         success = True
     else:
         print("Test failed: Decoded data does not match original")
@@ -77,8 +79,8 @@ def test_cert_install_shim():
         success = False
 
     # Cleanup
-    lib.iso2_cert_install_free(exi_buffer)
-    lib.iso2_cert_install_free(json_str_out)
+    lib.iso2_certificate_installation_req_free(exi_buffer)
+    lib.iso2_certificate_installation_req_free(json_str_out)
 
     return success
 

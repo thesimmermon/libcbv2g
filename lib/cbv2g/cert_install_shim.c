@@ -110,8 +110,8 @@ static double exi_signed_to_double(const exi_signed_t* exi_signed) {
     return (double)int_value;
 }
 
-int iso2_cert_install_encode_json_to_exi(const char* json_str, uint8_t** exi_buffer, size_t* exi_size) {
-    printf("DEBUG: iso2_cert_install_encode_json_to_exi called with json_str=%p, exi_buffer=%p, exi_size=%p\n", (void*)json_str, (void*)exi_buffer, (void*)exi_size);
+int iso2_certificate_installation_req_encode_json_to_exi(const char* json_str, uint8_t** exi_buffer, size_t* exi_size) {
+    printf("DEBUG: iso2_certificate_installation_req_encode_json_to_exi called with json_str=%p, exi_buffer=%p, exi_size=%p\n", (void*)json_str, (void*)exi_buffer, (void*)exi_size);
     fflush(stdout);
     if (!json_str || !exi_buffer || !exi_size) {
         printf("DEBUG: Error: NULL pointer passed\n");
@@ -286,12 +286,12 @@ int iso2_cert_install_encode_json_to_exi(const char* json_str, uint8_t** exi_buf
 
     // Cleanup
     cJSON_Delete(root);
-    printf("DEBUG: iso2_cert_install_encode_json_to_exi finished successfully\n");
+    printf("DEBUG: iso2_certificate_installation_req_encode_json_to_exi finished successfully\n");
     fflush(stdout);
     return 0;
 }
 
-int iso2_cert_install_decode_exi_to_json(const uint8_t* exi_buffer, size_t exi_size, char** json_str) {
+int iso2_certificate_installation_req_decode_exi_to_json(const uint8_t* exi_buffer, size_t exi_size, char** json_str) {
     if (!exi_buffer || !json_str) {
         return -1;
     }
@@ -392,7 +392,7 @@ int iso2_cert_install_decode_exi_to_json(const uint8_t* exi_buffer, size_t exi_s
     return 0;
 }
 
-void iso2_cert_install_free(void* ptr) {
+void iso2_certificate_installation_req_free(void* ptr) {
     if (ptr) {
         free(ptr);
     }

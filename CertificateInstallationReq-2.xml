@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<v2gci_d:V2G_Message xmlns:v2gci_d="urn:iso:15118:2:2013:MsgDef" 
+                    xmlns:v2gci_h="urn:iso:15118:2:2013:MsgHeader"
+                    xmlns:v2gci_b="urn:iso:15118:2:2013:MsgBody"
+                    xmlns:v2gci_t="urn:iso:15118:2:2013:MsgDataTypes"
+                    xmlns:xmlsig="http://www.w3.org/2000/09/xmldsig#">
+  <v2gci_d:Header>
+    <v2gci_h:SessionID>12345678</v2gci_h:SessionID>
+    <v2gci_h:Notification>
+      <v2gci_t:FaultCode>NoTLSRootCertificatAvailable</v2gci_t:FaultCode>
+      <v2gci_t:FaultMsg>Certificate installation required</v2gci_t:FaultMsg>
+    </v2gci_h:Notification>
+  </v2gci_d:Header>
+  <v2gci_d:Body>
+    <v2gci_b:CertificateInstallationReq Id="ID1">
+      <v2gci_b:OEMProvisioningCert>MIIBmDCCAQGgAwIBAgIBATAKBggqhkjOPQQDAjAzMRwwGgYDVQQKDBNPRU0gUHJvdmlzaW9uaW5nIENBMRMwEQYDVQQDDApPRU0gU3ViIENBMB4XDTIzMDEwMTAwMDAwMFoXDTI1MDEwMTAwMDAwMFowKzEMMAoGA1UECgwDT0VNMRswGQYDVQQDDBJPRU0gUHJvdmlzaW9uaW5nIENBMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEY30s8rpA+KJ+YcgiYtIEJjaOV0xkiCGZXak3JTt6OcIgC3681KIByqcU7Jg/xkBxDv3O9KgP83KH9IrPNldFQaMjMCEwDgYDVR0PAQH/BAQDAgeAMA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDSAAwRQIhAJ6s6R7zzk6WHEQbK8nQ09u3qfPP2xAZu6VPGVYPbXvKAiBqlxhBvW8QOu1J5ZAYtrV7KxHD7zKJtOEfZkY9Qh5y1Q==</v2gci_b:OEMProvisioningCert>
+      <v2gci_b:ListOfRootCertificateIDs>
+        <v2gci_t:RootCertificateID>
+          <xmlsig:X509IssuerName>CN=V2G Root CA, O=V2G PKI</xmlsig:X509IssuerName>
+          <xmlsig:X509SerialNumber>1234567890</xmlsig:X509SerialNumber>
+        </v2gci_t:RootCertificateID>
+      </v2gci_b:ListOfRootCertificateIDs>
+    </v2gci_b:CertificateInstallationReq>
+  </v2gci_d:Body>
+</v2gci_d:V2G_Message>

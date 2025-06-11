@@ -26,7 +26,7 @@ extern "C" {
  * @param exi_size Size of the EXI data
  * @return int 0 on success, negative value on error
  */
-DLL_PUBLIC int iso2_cert_install_encode_json_to_exi(
+DLL_PUBLIC int iso2_certificate_installation_req_encode_json_to_exi(
     const char* json_str,
     uint8_t** exi_buffer,
     size_t* exi_size
@@ -40,7 +40,7 @@ DLL_PUBLIC int iso2_cert_install_encode_json_to_exi(
  * @param json_str Output JSON string (will be allocated)
  * @return int 0 on success, negative value on error
  */
-DLL_PUBLIC int iso2_cert_install_decode_exi_to_json(
+DLL_PUBLIC int iso2_certificate_installation_req_decode_exi_to_json(
     const uint8_t* exi_buffer,
     size_t exi_size,
     char** json_str
@@ -51,7 +51,7 @@ DLL_PUBLIC int iso2_cert_install_decode_exi_to_json(
  * 
  * @param ptr Pointer to memory to free
  */
-DLL_PUBLIC void iso2_cert_install_free(void* ptr);
+DLL_PUBLIC void iso2_certificate_installation_req_free(void* ptr);
 
 #ifdef __cplusplus
 }
