@@ -11,7 +11,7 @@ import argparse
 if sys.platform == 'win32':
     lib = ctypes.CDLL(os.path.join(os.path.dirname(__file__), '../../build_win_arm64/bin/Release/cbv2g_json_shim.dll'))
 else:
-    lib = ctypes.CDLL(os.path.join(os.path.dirname(__file__), '../../build/lib/libcbv2g_json_shim.so'))
+    lib = ctypes.CDLL(os.path.join(os.path.dirname(__file__), '../../build_linux_arm64/lib/cbv2g/libcbv2g_json_shim.so'))
 
 # Define function signatures for request
 lib.iso2_certificate_installation_req_encode_json_to_exi.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.POINTER(ctypes.c_uint8)), ctypes.POINTER(ctypes.c_size_t)]

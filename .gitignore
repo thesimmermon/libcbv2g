@@ -1,3 +1,4 @@
 *build
 .vscode
 build_win_arm64/
+build_linux_arm64/

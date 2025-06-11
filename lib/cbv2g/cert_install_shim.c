@@ -149,27 +149,27 @@ static int hex_to_binary(const char* hex, uint8_t** binary, size_t* binary_len) 
 }
 
 int iso2_certificate_installation_req_encode_json_to_exi(const char* json_str, uint8_t** exi_buffer, size_t* exi_size) {
-    printf("DEBUG: iso2_certificate_installation_req_encode_json_to_exi called with json_str=%p, exi_buffer=%p, exi_size=%p\n", (void*)json_str, (void*)exi_buffer, (void*)exi_size);
-    fflush(stdout);
+    ////printf("DEBUG: iso2_certificate_installation_req_encode_json_to_exi called with json_str=%p, exi_buffer=%p, exi_size=%p\n", (void*)json_str, (void*)exi_buffer, (void*)exi_size);
+    ////fflush(stdout);
     if (!json_str || !exi_buffer || !exi_size) {
-        printf("DEBUG: Error: NULL pointer passed\n");
-        fflush(stdout);
+        ////printf("DEBUG: Error: NULL pointer passed\n");
+        ////fflush(stdout);
         return -1;
     }
 
     // Parse JSON
-    printf("DEBUG: Parsing JSON\n");
-    fflush(stdout);
+    ////printf("DEBUG: Parsing JSON\n");
+    //fflush(stdout);
     cJSON* root = cJSON_Parse(json_str);
     if (!root) {
-        printf("DEBUG: Error: Failed to parse JSON\n");
-        fflush(stdout);
+        ////printf("DEBUG: Error: Failed to parse JSON\n");
+        ////fflush(stdout);
         return -2;
     }
 
     // Create EXI document
-    printf("DEBUG: Creating EXI document\n");
-    fflush(stdout);
+    ////printf("DEBUG: Creating EXI document\n");
+    ////fflush(stdout);
     struct iso2_exiDocument exi_doc;
     memset(&exi_doc, 0, sizeof(exi_doc));
 
@@ -180,8 +180,8 @@ int iso2_certificate_installation_req_encode_json_to_exi(const char* json_str, u
     exi_doc.V2G_Message.Body.CertificateInstallationReq_isUsed = 1;
 
     // Get SessionID from JSON
-    printf("DEBUG: Getting SessionID from JSON\n");
-    fflush(stdout);
+    ////printf("DEBUG: Getting SessionID from JSON\n");
+    ////fflush(stdout);
     cJSON* session_id = cJSON_GetObjectItem(root, "SessionID");
     if (session_id && session_id->valuestring) {
         uint8_t* binary_session_id;
@@ -202,8 +202,8 @@ int iso2_certificate_installation_req_encode_json_to_exi(const char* json_str, u
     }
 
     // Get Id from JSON
-    printf("DEBUG: Getting Id from JSON\n");
-    fflush(stdout);
+    ////printf("DEBUG: Getting Id from JSON\n");
+    ////fflush(stdout);
     cJSON* id = cJSON_GetObjectItem(root, "Id");
     if (id && id->valuestring) {
         size_t len = strlen(id->valuestring);
@@ -212,8 +212,8 @@ int iso2_certificate_installation_req_encode_json_to_exi(const char* json_str, u
     }
 
     // Get OEMProvisioningCert from JSON
-    printf("DEBUG: Getting OEMProvisioningCert from JSON\n");
-    fflush(stdout);
+    ////printf("DEBUG: Getting OEMProvisioningCert from JSON\n");
+    ////fflush(stdout);
     cJSON* oem_cert = cJSON_GetObjectItem(root, "OEMProvisioningCert");
     if (oem_cert && oem_cert->valuestring) {
         uint8_t* binary_cert;
@@ -226,8 +226,8 @@ int iso2_certificate_installation_req_encode_json_to_exi(const char* json_str, u
     }
 
     // Get ListOfRootCertificateIDs from JSON
-    printf("DEBUG: Getting ListOfRootCertificateIDs from JSON\n");
-    fflush(stdout);
+    ////printf("DEBUG: Getting ListOfRootCertificateIDs from JSON\n");
+    ////fflush(stdout);
     cJSON* root_certs = cJSON_GetObjectItem(root, "ListOfRootCertificateIDs");
     if (root_certs && cJSON_IsArray(root_certs)) {
         int array_size = cJSON_GetArraySize(root_certs);
@@ -250,22 +250,22 @@ int iso2_certificate_installation_req_encode_json_to_exi(const char* json_str, u
     }
 
     // Print exi_doc contents before encoding
-    printf("DEBUG: exi_doc.V2G_Message.Header.SessionID.bytesLen = %u\n", exi_doc.V2G_Message.Header.SessionID.bytesLen);
-    printf("DEBUG: exi_doc.V2G_Message.Header.SessionID.bytes = ");
-    for (int i = 0; i < exi_doc.V2G_Message.Header.SessionID.bytesLen; ++i) {
-        printf("%02X ", (unsigned char)exi_doc.V2G_Message.Header.SessionID.bytes[i]);
-    }
-    printf("\n");
-    printf("DEBUG: exi_doc.V2G_Message.Body.CertificateInstallationReq_isUsed = %d\n", exi_doc.V2G_Message.Body.CertificateInstallationReq_isUsed);
-    printf("DEBUG: exi_doc.V2G_Message.Body.CertificateInstallationReq.Id.charactersLen = %u\n", exi_doc.V2G_Message.Body.CertificateInstallationReq.Id.charactersLen);
-    printf("DEBUG: exi_doc.V2G_Message.Body.CertificateInstallationReq.Id.characters = ");
-    for (int i = 0; i < exi_doc.V2G_Message.Body.CertificateInstallationReq.Id.charactersLen; ++i) {
-        printf("%c", exi_doc.V2G_Message.Body.CertificateInstallationReq.Id.characters[i]);
-    }
-    printf("\n");
-    printf("DEBUG: exi_doc.V2G_Message.Body.CertificateInstallationReq.OEMProvisioningCert.bytesLen = %u\n", exi_doc.V2G_Message.Body.CertificateInstallationReq.OEMProvisioningCert.bytesLen);
-    printf("DEBUG: exi_doc.V2G_Message.Body.CertificateInstallationReq.ListOfRootCertificateIDs.RootCertificateID.arrayLen = %u\n", exi_doc.V2G_Message.Body.CertificateInstallationReq.ListOfRootCertificateIDs.RootCertificateID.arrayLen);
-    fflush(stdout);
+    ////printf("DEBUG: exi_doc.V2G_Message.Header.SessionID.bytesLen = %u\n", exi_doc.V2G_Message.Header.SessionID.bytesLen);
+    ////printf("DEBUG: exi_doc.V2G_Message.Header.SessionID.bytes = ");
+    //for (int i = 0; i < exi_doc.V2G_Message.Header.SessionID.bytesLen; ++i) {
+    //    printf("%02X ", (unsigned char)exi_doc.V2G_Message.Header.SessionID.bytes[i]);
+    //}
+    //printf("\n");
+    ////printf("DEBUG: exi_doc.V2G_Message.Body.CertificateInstallationReq_isUsed = %d\n", exi_doc.V2G_Message.Body.CertificateInstallationReq_isUsed);
+    ////printf("DEBUG: exi_doc.V2G_Message.Body.CertificateInstallationReq.Id.charactersLen = %u\n", exi_doc.V2G_Message.Body.CertificateInstallationReq.Id.charactersLen);
+    ////printf("DEBUG: exi_doc.V2G_Message.Body.CertificateInstallationReq.Id.characters = ");
+    //for (int i = 0; i < exi_doc.V2G_Message.Body.CertificateInstallationReq.Id.charactersLen; ++i) {
+    //    printf("%c", exi_doc.V2G_Message.Body.CertificateInstallationReq.Id.characters[i]);
+    //}
+    //printf("\n");
+    ////printf("DEBUG: exi_doc.V2G_Message.Body.CertificateInstallationReq.OEMProvisioningCert.bytesLen = %u\n", exi_doc.V2G_Message.Body.CertificateInstallationReq.OEMProvisioningCert.bytesLen);
+    ////printf("DEBUG: exi_doc.V2G_Message.Body.CertificateInstallationReq.ListOfRootCertificateIDs.RootCertificateID.arrayLen = %u\n", exi_doc.V2G_Message.Body.CertificateInstallationReq.ListOfRootCertificateIDs.RootCertificateID.arrayLen);
+    ////fflush(stdout);
 
     // Calculate required buffer size
     size_t required_size = 0;
@@ -280,22 +280,22 @@ int iso2_certificate_installation_req_encode_json_to_exi(const char* json_str, u
     // Add some padding for safety
     required_size += 100;
 
-    printf("DEBUG: Required buffer size: %zu\n", required_size);
+    ////printf("DEBUG: Required buffer size: %zu\n", required_size);
 
     // Allocate buffer if needed
     if (*exi_size == 0 || *exi_buffer == NULL) {
-        printf("DEBUG: Allocating new buffer of size %zu\n", required_size);
+        ////printf("DEBUG: Allocating new buffer of size %zu\n", required_size);
         *exi_buffer = (uint8_t*)malloc(required_size);
         if (*exi_buffer == NULL) {
-            printf("DEBUG: Failed to allocate buffer\n");
+            //printf("DEBUG: Failed to allocate buffer\n");
             return -1;
         }
         *exi_size = required_size;
     } else if (*exi_size < required_size) {
-        printf("DEBUG: Reallocating buffer from %zu to %zu\n", *exi_size, required_size);
+        ////printf("DEBUG: Reallocating buffer from %zu to %zu\n", *exi_size, required_size);
         uint8_t* new_buffer = (uint8_t*)realloc(*exi_buffer, required_size);
         if (new_buffer == NULL) {
-            printf("DEBUG: Failed to reallocate buffer\n");
+            ////printf("DEBUG: Failed to reallocate buffer\n");
             return -1;
         }
         *exi_buffer = new_buffer;
@@ -303,34 +303,34 @@ int iso2_certificate_installation_req_encode_json_to_exi(const char* json_str, u
     }
 
     // Initialize bitstream
-    printf("DEBUG: About to initialize bitstream\n");
-    printf("DEBUG: exi_buffer size: %zu\n", *exi_size);
+    ////printf("DEBUG: About to initialize bitstream\n");
+    ////printf("DEBUG: exi_buffer size: %zu\n", *exi_size);
     exi_bitstream_t stream;
     exi_bitstream_init(&stream, *exi_buffer, *exi_size, 0, NULL);
-    printf("DEBUG: Bitstream initialized successfully\n");
-    printf("DEBUG: stream.data_size: %zu\n", stream.data_size);
-    printf("DEBUG: stream.byte_pos: %zu\n", stream.byte_pos);
+    ////printf("DEBUG: Bitstream initialized successfully\n");
+    ////printf("DEBUG: stream.data_size: %zu\n", stream.data_size);
+    ////printf("DEBUG: stream.byte_pos: %zu\n", stream.byte_pos);
 
     // Encode to EXI
-    printf("DEBUG: About to encode to EXI\n");
+    ////printf("DEBUG: About to encode to EXI\n");
     int err = encode_iso2_exiDocument(&stream, &exi_doc);
     if (err != 0) {
-        printf("DEBUG: Failed to encode to EXI with error code: %d\n", err);
-        printf("DEBUG: Final stream.byte_pos: %zu\n", stream.byte_pos);
-        printf("DEBUG: Final stream.bit_count: %u\n", stream.bit_count);
+        ////printf("DEBUG: Failed to encode to EXI with error code: %d\n", err);
+        ////printf("DEBUG: Final stream.byte_pos: %zu\n", stream.byte_pos);
+        ////printf("DEBUG: Final stream.bit_count: %u\n", stream.bit_count);
         return err;
     }
-    printf("DEBUG: EXI encoding completed successfully\n");
+    ////printf("DEBUG: EXI encoding completed successfully\n");
 
     // Get the actual size of the encoded data
-    printf("DEBUG: About to get encoded size\n");
+    ////printf("DEBUG: About to get encoded size\n");
     *exi_size = exi_bitstream_get_length(&stream);
-    printf("DEBUG: Final encoded size: %zu\n", *exi_size);
+    //printf("DEBUG: Final encoded size: %zu\n", *exi_size);
 
     // Cleanup
     cJSON_Delete(root);
-    printf("DEBUG: iso2_certificate_installation_req_encode_json_to_exi finished successfully\n");
-    fflush(stdout);
+    //printf("DEBUG: iso2_certificate_installation_req_encode_json_to_exi finished successfully\n");
+    //fflush(stdout);
     return 0;
 }
 
@@ -444,27 +444,27 @@ void iso2_certificate_installation_req_free(void* ptr) {
 
 // ISO-2 Certificate Installation Response stubs
 int iso2_certificate_installation_res_encode_json_to_exi(const char* json_str, uint8_t** exi_buffer, size_t* exi_size) {
-    printf("DEBUG: iso2_certificate_installation_res_encode_json_to_exi called with json_str=%p, exi_buffer=%p, exi_size=%p\n", (void*)json_str, (void*)exi_buffer, (void*)exi_size);
-    fflush(stdout);
+    //printf("DEBUG: iso2_certificate_installation_res_encode_json_to_exi called with json_str=%p, exi_buffer=%p, exi_size=%p\n", (void*)json_str, (void*)exi_buffer, (void*)exi_size);
+    //fflush(stdout);
     if (!json_str || !exi_buffer || !exi_size) {
-        printf("DEBUG: Error: NULL pointer passed\n");
-        fflush(stdout);
+        //printf("DEBUG: Error: NULL pointer passed\n");
+        //fflush(stdout);
         return -1;
     }
 
     // Parse JSON
-    printf("DEBUG: Parsing JSON\n");
-    fflush(stdout);
+    //printf("DEBUG: Parsing JSON\n");
+    //fflush(stdout);
     cJSON* root = cJSON_Parse(json_str);
     if (!root) {
-        printf("DEBUG: Error: Failed to parse JSON\n");
-        fflush(stdout);
+        //printf("DEBUG: Error: Failed to parse JSON\n");
+        //fflush(stdout);
         return -2;
     }
 
     // Create EXI document
-    printf("DEBUG: Creating EXI document\n");
-    fflush(stdout);
+    //printf("DEBUG: Creating EXI document\n");
+    //fflush(stdout);
     struct iso2_exiDocument exi_doc;
     memset(&exi_doc, 0, sizeof(exi_doc));
 
@@ -475,23 +475,22 @@ int iso2_certificate_installation_res_encode_json_to_exi(const char* json_str, u
     exi_doc.V2G_Message.Body.CertificateInstallationRes_isUsed = 1;
 
     // Get SessionID from JSON
-    printf("DEBUG: Getting SessionID from JSON\n");
-    fflush(stdout);
+    //printf("DEBUG: Getting SessionID from JSON\n");
+    //fflush(stdout);
     cJSON* session_id = cJSON_GetObjectItem(root, "SessionID");
     if (session_id && session_id->valuestring) {
         size_t len = strlen(session_id->valuestring);
         exi_doc.V2G_Message.Header.SessionID.bytesLen = iso2_sessionIDType_BYTES_SIZE; // Always 8
         memset(exi_doc.V2G_Message.Header.SessionID.bytes, 0, iso2_sessionIDType_BYTES_SIZE); // Zero out
         memcpy(exi_doc.V2G_Message.Header.SessionID.bytes, session_id->valuestring, len > iso2_sessionIDType_BYTES_SIZE ? iso2_sessionIDType_BYTES_SIZE : len); // Copy up to 8
-        printf("DEBUG: session_id && valuestring-exi_doc.V2G_Message.Header.SessionID.bytesLen = %u\n", exi_doc.V2G_Message.Header.SessionID.bytesLen);
+        //printf("DEBUG: session_id && valuestring-exi_doc.V2G_Message.Header.SessionID.bytesLen = %u\n", exi_doc.V2G_Message.Header.SessionID.bytesLen);
 
     } else {
         exi_doc.V2G_Message.Header.SessionID.bytesLen = iso2_sessionIDType_BYTES_SIZE;
         memset(exi_doc.V2G_Message.Header.SessionID.bytes, 0, iso2_sessionIDType_BYTES_SIZE);
-        printf("DEBUG: esle - exi_doc.V2G_Message.Header.SessionID.bytesLen = %u\n", exi_doc.V2G_Message.Header.SessionID.bytesLen);
+        //printf("DEBUG: esle - exi_doc.V2G_Message.Header.SessionID.bytesLen = %u\n", exi_doc.V2G_Message.Header.SessionID.bytesLen);
     }
 
-    // TODO: Use the data from the JSON to fill the response object
     // Get ResponseCode from JSON
     cJSON* response_code = cJSON_GetObjectItem(root, "ResponseCode");
     if (response_code && response_code->valuestring) {
@@ -667,8 +666,8 @@ int iso2_certificate_installation_res_encode_json_to_exi(const char* json_str, u
     }
 
     // Print exi_doc contents before encoding
-    printf("DEBUG: exi_doc.V2G_Message.Header.SessionID.bytesLen = %u\n", exi_doc.V2G_Message.Header.SessionID.bytesLen);
-    printf("DEBUG: exi_doc.V2G_Message.Header.SessionID.bytes = ");
+    //printf("DEBUG: exi_doc.V2G_Message.Header.SessionID.bytesLen = %u\n", exi_doc.V2G_Message.Header.SessionID.bytesLen);
+    //printf("DEBUG: exi_doc.V2G_Message.Header.SessionID.bytes = ");
     for (int i = 0; i < exi_doc.V2G_Message.Header.SessionID.bytesLen; ++i) {
         printf("%02X ", (unsigned char)exi_doc.V2G_Message.Header.SessionID.bytes[i]);
     }
@@ -701,22 +700,22 @@ int iso2_certificate_installation_res_encode_json_to_exi(const char* json_str, u
     // Add some padding for safety
     required_size += 100;
 
-    printf("DEBUG: Required buffer size: %zu\n", required_size);
+    //printf("DEBUG: Required buffer size: %zu\n", required_size);
 
     // Allocate buffer if needed
     if (*exi_size == 0 || *exi_buffer == NULL) {
-        printf("DEBUG: Allocating new buffer of size %zu\n", required_size);
+        //printf("DEBUG: Allocating new buffer of size %zu\n", required_size);
         *exi_buffer = (uint8_t*)malloc(required_size);
         if (*exi_buffer == NULL) {
-            printf("DEBUG: Failed to allocate buffer\n");
+            //printf("DEBUG: Failed to allocate buffer\n");
             return -1;
         }
         *exi_size = required_size;
     } else if (*exi_size < required_size) {
-        printf("DEBUG: Reallocating buffer from %zu to %zu\n", *exi_size, required_size);
+        //printf("DEBUG: Reallocating buffer from %zu to %zu\n", *exi_size, required_size);
         uint8_t* new_buffer = (uint8_t*)realloc(*exi_buffer, required_size);
         if (new_buffer == NULL) {
-            printf("DEBUG: Failed to reallocate buffer\n");
+            //printf("DEBUG: Failed to reallocate buffer\n");
             return -1;
         }
         *exi_buffer = new_buffer;
@@ -724,34 +723,34 @@ int iso2_certificate_installation_res_encode_json_to_exi(const char* json_str, u
     }
 
     // Initialize bitstream
-    printf("DEBUG: About to initialize bitstream\n");
-    printf("DEBUG: exi_buffer size: %zu\n", *exi_size);
+    //printf("DEBUG: About to initialize bitstream\n");
+    //printf("DEBUG: exi_buffer size: %zu\n", *exi_size);
     exi_bitstream_t stream;
     exi_bitstream_init(&stream, *exi_buffer, *exi_size, 0, NULL);
-    printf("DEBUG: Bitstream initialized successfully\n");
-    printf("DEBUG: stream.data_size: %zu\n", stream.data_size);
-    printf("DEBUG: stream.byte_pos: %zu\n", stream.byte_pos);
+    //printf("DEBUG: Bitstream initialized successfully\n");
+    //printf("DEBUG: stream.data_size: %zu\n", stream.data_size);
+    //printf("DEBUG: stream.byte_pos: %zu\n", stream.byte_pos);
 
     // Encode to EXI
-    printf("DEBUG: About to encode to EXI\n");
+    //printf("DEBUG: About to encode to EXI\n");
     int err = encode_iso2_exiDocument(&stream, &exi_doc);
     if (err != 0) {
-        printf("DEBUG: Failed to encode to EXI with error code: %d\n", err);
-        printf("DEBUG: Final stream.byte_pos: %zu\n", stream.byte_pos);
-        printf("DEBUG: Final stream.bit_count: %u\n", stream.bit_count);
+        //printf("DEBUG: Failed to encode to EXI with error code: %d\n", err);
+        //printf("DEBUG: Final stream.byte_pos: %zu\n", stream.byte_pos);
+        //printf("DEBUG: Final stream.bit_count: %u\n", stream.bit_count);
         return err;
     }
-    printf("DEBUG: EXI encoding completed successfully\n");
+    //printf("DEBUG: EXI encoding completed successfully\n");
 
     // Get the actual size of the encoded data
-    printf("DEBUG: About to get encoded size\n");
+    //printf("DEBUG: About to get encoded size\n");
     *exi_size = exi_bitstream_get_length(&stream);
-    printf("DEBUG: Final encoded size: %zu\n", *exi_size);
+    //printf("DEBUG: Final encoded size: %zu\n", *exi_size);
 
     // Cleanup
     cJSON_Delete(root);
-    printf("DEBUG: iso2_certificate_installation_res_encode_json_to_exi finished successfully\n");
-    fflush(stdout);
+    //printf("DEBUG: iso2_certificate_installation_res_encode_json_to_exi finished successfully\n");
+    //fflush(stdout);
     return 0;
 }
 

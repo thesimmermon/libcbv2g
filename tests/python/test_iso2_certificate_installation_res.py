@@ -10,7 +10,7 @@ import base64
 if sys.platform == 'win32':
     lib = ctypes.CDLL(os.path.join(os.path.dirname(__file__), '../../build_win_arm64/bin/Release/cbv2g_json_shim.dll'))
 else:
-    lib = ctypes.CDLL(os.path.join(os.path.dirname(__file__), '../../build/lib/libcbv2g_json_shim.so'))
+    lib = ctypes.CDLL(os.path.join(os.path.dirname(__file__), '../../build_linux_arm64/lib/cbv2g/libcbv2g_json_shim.so'))
 
 # Define function signatures
 lib.iso2_certificate_installation_res_encode_json_to_exi.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.POINTER(ctypes.c_uint8)), ctypes.POINTER(ctypes.c_size_t)]
@@ -25,7 +25,7 @@ lib.iso2_certificate_installation_req_free.restype = None
 def test_iso2_certificate_installation_res():
     # Create test data based on CertificateInstallationRes-2.xml
     test_data = {
-        "SessionID": "12345678",
+        "SessionID": "1234567890ABCDEF",  # 16-character hex string
         "ResponseCode": "OK",
         "SAProvisioningCertificateChain": {
             "Certificate": "MIIBmDCCAQGgAwIBAgIBATAKBggqhkjOPQQDAjAzMRwwGgYDVQQKDBNTQSBQcm92aXNpb25pbmcgQ0ExEzARBgNVBAMMClNBIFN1YiBDQTAeFw0yMzAxMDEwMDAwMDBaFw0yNTAxMDEwMDAwMDBaMCsxDDAKBgNVBAoMA1NBTTEbMBkGA1UEAwwSU0EgUHJvdmlzaW9uaW5nIENBMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEY30s8rpA+KJ+YcgiYtIEJjaOV0xkiCGZXak3JTt6OcIgC3681KIByqcU7Jg/xkBxDv3O9KgP83KH9IrPNldFQaMjMCEwDgYDVR0PAQH/BAQDAgeAMA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDSAAwRQIhAJ6s6R7zzk6WHEQbK8nQ09u3qfPP2xAZu6VPGVYPbXvKAiBqlxhBvW8QOu1J5ZAYtrV7KxHD7zKJtOEfZkY9Qh5y1Q==",
