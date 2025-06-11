@@ -26,10 +26,7 @@ def test_iso2_certificate_installation_req():
     # Create test data based on CertificateInstallationReq-2.xml
     test_data = {
         "SessionID": "12345678",
-        "Notification": {
-            "FaultCode": "NoTLSRootCertificatAvailable",
-            "FaultMsg": "Certificate installation required"
-        },
+
         "Id": "ID1",
         "OEMProvisioningCert": "MIIBmDCCAQGgAwIBAgIBATAKBggqhkjOPQQDAjAzMRwwGgYDVQQKDBNPRU0gUHJvdmlzaW9uaW5nIENBMRMwEQYDVQQDDApPRU0gU3ViIENBMB4XDTIzMDEwMTAwMDAwMFoXDTI1MDEwMTAwMDAwMFowKzEMMAoGA1UECgwDT0VNMRswGQYDVQQDDBJPRU0gUHJvdmlzaW9uaW5nIENBMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEY30s8rpA+KJ+YcgiYtIEJjaOV0xkiCGZXak3JTt6OcIgC3681KIByqcU7Jg/xkBxDv3O9KgP83KH9IrPNldFQaMjMCEwDgYDVR0PAQH/BAQDAgeAMA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDSAAwRQIhAJ6s6R7zzk6WHEQbK8nQ09u3qfPP2xAZu6VPGVYPbXvKAiBqlxhBvW8QOu1J5ZAYtrV7KxHD7zKJtOEfZkY9Qh5y1Q==",
         "ListOfRootCertificateIDs": [
