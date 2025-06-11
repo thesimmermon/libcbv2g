@@ -400,8 +400,149 @@ void iso2_certificate_installation_req_free(void* ptr) {
 
 // ISO-2 Certificate Installation Response stubs
 int iso2_certificate_installation_res_encode_json_to_exi(const char* json_str, uint8_t** exi_buffer, size_t* exi_size) {
-    // TODO: Implement ISO-2 Certificate Installation Response encoding
-    return -1;
+    printf("DEBUG: iso2_certificate_installation_res_encode_json_to_exi called with json_str=%p, exi_buffer=%p, exi_size=%p\n", (void*)json_str, (void*)exi_buffer, (void*)exi_size);
+    fflush(stdout);
+    if (!json_str || !exi_buffer || !exi_size) {
+        printf("DEBUG: Error: NULL pointer passed\n");
+        fflush(stdout);
+        return -1;
+    }
+
+    // Parse JSON
+    printf("DEBUG: Parsing JSON\n");
+    fflush(stdout);
+    cJSON* root = cJSON_Parse(json_str);
+    if (!root) {
+        printf("DEBUG: Error: Failed to parse JSON\n");
+        fflush(stdout);
+        return -2;
+    }
+
+    // Create EXI document
+    printf("DEBUG: Creating EXI document\n");
+    fflush(stdout);
+    struct iso2_exiDocument exi_doc;
+    memset(&exi_doc, 0, sizeof(exi_doc));
+
+    // Initialize the V2G message and Body and CertificateInstallationRes
+    init_iso2_V2G_Message(&exi_doc.V2G_Message);
+    init_iso2_BodyType(&exi_doc.V2G_Message.Body);
+    init_iso2_CertificateInstallationResType(&exi_doc.V2G_Message.Body.CertificateInstallationRes);
+    exi_doc.V2G_Message.Body.CertificateInstallationRes_isUsed = 1;
+
+    struct iso2_CertificateInstallationResType* res = &exi_doc.V2G_Message.Body.CertificateInstallationRes;
+
+    // Get ResponseCode from JSON
+    printf("DEBUG: Getting ResponseCode from JSON\n");
+    fflush(stdout);
+    cJSON* response_code = cJSON_GetObjectItem(root, "ResponseCode");
+    if (response_code && response_code->valuestring) {
+        // Map string to enum (assume helper function exists or add mapping as needed)
+        res->ResponseCode = iso2_responseCodeType_OK; // TODO: Map string to enum
+    }
+
+    // Get SAProvisioningCertificateChain from JSON
+    printf("DEBUG: Getting SAProvisioningCertificateChain from JSON\n");
+    fflush(stdout);
+    cJSON* sa_chain = cJSON_GetObjectItem(root, "SAProvisioningCertificateChain");
+    if (sa_chain) {
+        // TODO: Fill iso2_CertificateChainType from JSON
+        // Use helper to parse chain fields (Id, Certificate, SubCertificates)
+    }
+
+    // Get ContractSignatureCertChain from JSON
+    printf("DEBUG: Getting ContractSignatureCertChain from JSON\n");
+    fflush(stdout);
+    cJSON* contract_chain = cJSON_GetObjectItem(root, "ContractSignatureCertChain");
+    if (contract_chain) {
+        // TODO: Fill iso2_CertificateChainType from JSON
+    }
+
+    // Get ContractSignatureEncryptedPrivateKey from JSON
+    printf("DEBUG: Getting ContractSignatureEncryptedPrivateKey from JSON\n");
+    fflush(stdout);
+    cJSON* encrypted_key = cJSON_GetObjectItem(root, "ContractSignatureEncryptedPrivateKey");
+    if (encrypted_key) {
+        // TODO: Fill iso2_ContractSignatureEncryptedPrivateKeyType from JSON
+    }
+
+    // Get DHpublickey from JSON
+    printf("DEBUG: Getting DHpublickey from JSON\n");
+    fflush(stdout);
+    cJSON* dh_pubkey = cJSON_GetObjectItem(root, "DHpublickey");
+    if (dh_pubkey) {
+        // TODO: Fill iso2_DiffieHellmanPublickeyType from JSON
+    }
+
+    // Get eMAID from JSON
+    printf("DEBUG: Getting eMAID from JSON\n");
+    fflush(stdout);
+    cJSON* emaid = cJSON_GetObjectItem(root, "eMAID");
+    if (emaid && emaid->valuestring) {
+        size_t len = strlen(emaid->valuestring);
+        res->eMAID.CONTENT.charactersLen = (uint16_t)len;
+        memcpy(res->eMAID.CONTENT.characters, emaid->valuestring, len);
+    }
+
+    // Estimate required buffer size (use similar logic as req)
+    size_t required_size = 1024; // TODO: Calculate more precisely if needed
+    required_size += 100;
+
+    printf("DEBUG: Required buffer size: %zu\n", required_size);
+
+    // Allocate buffer if needed
+    if (*exi_size == 0 || *exi_buffer == NULL) {
+        printf("DEBUG: Allocating new buffer of size %zu\n", required_size);
+        *exi_buffer = (uint8_t*)malloc(required_size);
+        if (*exi_buffer == NULL) {
+            printf("DEBUG: Failed to allocate buffer\n");
+            cJSON_Delete(root);
+            return -1;
+        }
+        *exi_size = required_size;
+    } else if (*exi_size < required_size) {
+        printf("DEBUG: Reallocating buffer from %zu to %zu\n", *exi_size, required_size);
+        uint8_t* new_buffer = (uint8_t*)realloc(*exi_buffer, required_size);
+        if (new_buffer == NULL) {
+            printf("DEBUG: Failed to reallocate buffer\n");
+            cJSON_Delete(root);
+            return -1;
+        }
+        *exi_buffer = new_buffer;
+        *exi_size = required_size;
+    }
+
+    // Initialize bitstream
+    printf("DEBUG: About to initialize bitstream\n");
+    printf("DEBUG: exi_buffer size: %zu\n", *exi_size);
+    exi_bitstream_t stream;
+    exi_bitstream_init(&stream, *exi_buffer, *exi_size, 0, NULL);
+    printf("DEBUG: Bitstream initialized successfully\n");
+    printf("DEBUG: stream.data_size: %zu\n", stream.data_size);
+    printf("DEBUG: stream.byte_pos: %zu\n", stream.byte_pos);
+
+    // Encode to EXI
+    printf("DEBUG: About to encode to EXI\n");
+    int err = encode_iso2_exiDocument(&stream, &exi_doc);
+    if (err != 0) {
+        printf("DEBUG: Failed to encode to EXI with error code: %d\n", err);
+        printf("DEBUG: Final stream.byte_pos: %zu\n", stream.byte_pos);
+        printf("DEBUG: Final stream.bit_count: %u\n", stream.bit_count);
+        cJSON_Delete(root);
+        return err;
+    }
+    printf("DEBUG: EXI encoding completed successfully\n");
+
+    // Get the actual size of the encoded data
+    printf("DEBUG: About to get encoded size\n");
+    *exi_size = exi_bitstream_get_length(&stream);
+    printf("DEBUG: Final encoded size: %zu\n", *exi_size);
+
+    // Cleanup
+    cJSON_Delete(root);
+    printf("DEBUG: iso2_certificate_installation_res_encode_json_to_exi finished successfully\n");
+    fflush(stdout);
+    return 0;
 }
 
 int iso2_certificate_installation_res_decode_exi_to_json(const uint8_t* exi_buffer, size_t exi_size, char** json_str) {
