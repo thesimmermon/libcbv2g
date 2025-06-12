@@ -2,3 +2,5 @@
 .vscode
 build_win_arm64/
 build_linux_arm64/
+/libcbv2g_snake/__pycache__
+__pycache__/iso2_exi_message.cpython-313.pyc
