@@ -78,14 +78,16 @@ DLL_PUBLIC int iso2_certificate_installation_res_decode_exi_to_json(
  * @brief Encodes a JSON string to EXI format for ISO-20 CertificateInstallationReq
  * 
  * @param json_str Input JSON string
- * @param exi_buffer Output buffer for EXI data (will be allocated)
- * @param exi_size Size of the EXI data
+ * @param exi_buf Output buffer for EXI data
+ * @param exi_buf_size Size of the output buffer
+ * @param exi_buf_len Size of the encoded EXI data
  * @return int 0 on success, negative value on error
  */
 DLL_PUBLIC int iso20_certificate_installation_req_encode_json_to_exi(
     const char* json_str,
-    uint8_t** exi_buffer,
-    size_t* exi_size
+    uint8_t* exi_buf,
+    size_t exi_buf_size,
+    size_t* exi_buf_len
 );
 
 /**

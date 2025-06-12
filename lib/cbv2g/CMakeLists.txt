@@ -162,11 +162,13 @@ target_compile_definitions(cbv2g_json_shim
 target_link_libraries(cbv2g_json_shim
     PUBLIC
         cbv2g::iso2
+        cbv2g::iso20
 )
 
 # Add explicit dependencies to ensure correct build order
-add_dependencies(cbv2g_json_shim cbv2g_iso2)
+add_dependencies(cbv2g_json_shim cbv2g_iso2 cbv2g_iso20)
 add_dependencies(cbv2g_iso2 cbv2g_exi_codec)
+add_dependencies(cbv2g_iso20 cbv2g_exi_codec)
 
 target_compile_features(cbv2g_json_shim PUBLIC c_std_99)
 

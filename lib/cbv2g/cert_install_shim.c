@@ -2,6 +2,9 @@
 #include "cbv2g/iso_2/iso2_msgDefDatatypes.h"
 #include "cbv2g/iso_2/iso2_msgDefEncoder.h"
 #include "cbv2g/iso_2/iso2_msgDefDecoder.h"
+#include "cbv2g/iso_20/iso20_CommonMessages_Datatypes.h"
+#include "cbv2g/iso_20/iso20_CommonMessages_Encoder.h"
+#include "cbv2g/iso_20/iso20_CommonMessages_Decoder.h"
 #include "cbv2g/common/exi_bitstream.h"
 #include "cbv2g/common/exi_header.h"
 #include "cbv2g/common/exi_basetypes.h"
@@ -243,7 +246,10 @@ int iso2_certificate_installation_req_encode_json_to_exi(const char* json_str, u
                     memcpy(exi_doc.V2G_Message.Body.CertificateInstallationReq.ListOfRootCertificateIDs.RootCertificateID.array[i].X509IssuerName.characters, issuer->valuestring, len);
                 }
                 if (serial && serial->valuedouble) {
-                    double_to_exi_signed(serial->valuedouble, &exi_doc.V2G_Message.Body.CertificateInstallationReq.ListOfRootCertificateIDs.RootCertificateID.array[i].X509SerialNumber);
+                    int32_t serial_value = (int32_t)serial->valuedouble;
+                    exi_basetypes_convert_to_signed(&exi_doc.V2G_Message.Body.CertificateInstallationReq.ListOfRootCertificateIDs.RootCertificateID.array[i].X509SerialNumber,
+                                                  serial_value,
+                                                  EXI_BASETYPES_UINT32_MAX_OCTETS);
                 }
             }
         }
@@ -775,7 +781,7 @@ int iso2_certificate_installation_res_decode_exi_to_json(const uint8_t* exi_buff
     
     int errn = decode_iso2_exiDocument(&stream, &exi_doc);
     if (errn != 0) {
-        return -2;
+        return errn;
     }
 
     // Create JSON
@@ -988,23 +994,810 @@ int iso2_certificate_installation_res_decode_exi_to_json(const uint8_t* exi_buff
 }
 
 // ISO-20 Certificate Installation Request stubs
-int iso20_certificate_installation_req_encode_json_to_exi(const char* json_str, uint8_t** exi_buffer, size_t* exi_size) {
-    // TODO: Implement ISO-20 Certificate Installation Request encoding
-    return -1;
+int iso20_certificate_installation_req_encode_json_to_exi(const char* json_str, uint8_t* exi_buf, size_t exi_buf_size, size_t* exi_buf_len) {
+    if (!json_str || !exi_buf || !exi_buf_len) {
+        return -1;
+    }
+
+    // Parse JSON
+    cJSON* json = cJSON_Parse(json_str);
+    if (!json) {
+        return -2;
+    }
+
+    // Initialize EXI document
+    struct iso20_exiDocument exi_doc;
+    init_iso20_exiDocument(&exi_doc);
+
+    // Set certificate installation request as used
+    exi_doc.CertificateInstallationReq_isUsed = 1;
+
+    // Initialize certificate installation request
+    init_iso20_CertificateInstallationReqType(&exi_doc.CertificateInstallationReq);
+
+    // Parse header
+    cJSON* header = cJSON_GetObjectItem(json, "Header");
+    if (header) {
+        cJSON* session_id = cJSON_GetObjectItem(header, "SessionID");
+        if (session_id && session_id->valuestring) {
+            size_t len = strlen(session_id->valuestring);
+            if (len <= iso20_sessionIDType_BYTES_SIZE) {
+                memcpy(exi_doc.CertificateInstallationReq.Header.SessionID.bytes, session_id->valuestring, len);
+                exi_doc.CertificateInstallationReq.Header.SessionID.bytesLen = (uint16_t)len;
+            }
+        }
+
+        cJSON* timestamp = cJSON_GetObjectItem(header, "TimeStamp");
+        if (timestamp && timestamp->valuestring) {
+            exi_doc.CertificateInstallationReq.Header.TimeStamp = (uint64_t)atoll(timestamp->valuestring);
+        }
+    }
+
+    // Parse OEM provisioning certificate chain
+    cJSON* oem_cert = cJSON_GetObjectItem(json, "OEMProvisioningCertificateChain");
+    if (oem_cert) {
+        cJSON* cert = cJSON_GetObjectItem(oem_cert, "Certificate");
+        if (cert && cert->valuestring) {
+            size_t len = strlen(cert->valuestring);
+            if (len <= iso20_certificateType_BYTES_SIZE) {
+                memcpy(exi_doc.CertificateInstallationReq.OEMProvisioningCertificateChain.Certificate.bytes, cert->valuestring, len);
+                exi_doc.CertificateInstallationReq.OEMProvisioningCertificateChain.Certificate.bytesLen = (uint16_t)len;
+            }
+        }
+
+        cJSON* sub_certs = cJSON_GetObjectItem(oem_cert, "SubCertificates");
+        if (sub_certs && cJSON_IsArray(sub_certs)) {
+            cJSON* cert_array = cJSON_GetObjectItem(sub_certs, "Certificate");
+            if (cert_array && cJSON_IsArray(cert_array)) {
+                int array_size = cJSON_GetArraySize(cert_array);
+                if (array_size <= iso20_certificateType_3_ARRAY_SIZE) {
+                    exi_doc.CertificateInstallationReq.OEMProvisioningCertificateChain.SubCertificates.Certificate.arrayLen = (uint16_t)array_size;
+                    for (int i = 0; i < array_size; i++) {
+                        cJSON* cert_item = cJSON_GetArrayItem(cert_array, i);
+                        if (cert_item && cert_item->valuestring) {
+                            size_t len = strlen(cert_item->valuestring);
+                            if (len <= iso20_certificateType_BYTES_SIZE) {
+                                memcpy(exi_doc.CertificateInstallationReq.OEMProvisioningCertificateChain.SubCertificates.Certificate.array[i].bytes, 
+                                      cert_item->valuestring, len);
+                                exi_doc.CertificateInstallationReq.OEMProvisioningCertificateChain.SubCertificates.Certificate.array[i].bytesLen = (uint16_t)len;
+                            }
+                        }
+                    }
+                    exi_doc.CertificateInstallationReq.OEMProvisioningCertificateChain.SubCertificates_isUsed = 1;
+                }
+            }
+        }
+    }
+
+    // Parse list of root certificate IDs
+    cJSON* root_certs = cJSON_GetObjectItem(json, "ListOfRootCertificateIDs");
+    if (root_certs) {
+        cJSON* cert_array = cJSON_GetObjectItem(root_certs, "RootCertificateID");
+        if (cert_array && cJSON_IsArray(cert_array)) {
+            int array_size = cJSON_GetArraySize(cert_array);
+            if (array_size <= iso20_X509IssuerSerialType_20_ARRAY_SIZE) {
+                exi_doc.CertificateInstallationReq.ListOfRootCertificateIDs.RootCertificateID.arrayLen = (uint16_t)array_size;
+                for (int i = 0; i < array_size; i++) {
+                    cJSON* cert_item = cJSON_GetArrayItem(cert_array, i);
+                    if (cert_item) {
+                        cJSON* issuer = cJSON_GetObjectItem(cert_item, "X509IssuerName");
+                        if (issuer && issuer->valuestring) {
+                            size_t len = strlen(issuer->valuestring);
+                            if (len <= iso20_X509IssuerName_CHARACTER_SIZE) {
+                                memcpy(exi_doc.CertificateInstallationReq.ListOfRootCertificateIDs.RootCertificateID.array[i].X509IssuerName.characters,
+                                      issuer->valuestring, len);
+                                exi_doc.CertificateInstallationReq.ListOfRootCertificateIDs.RootCertificateID.array[i].X509IssuerName.charactersLen = (uint16_t)len;
+                            }
+                        }
+
+                        cJSON* serial = cJSON_GetObjectItem(cert_item, "X509SerialNumber");
+                        if (serial && serial->valuestring) {
+                            int64_t serial_value = atoll(serial->valuestring);
+                            exi_basetypes_convert_to_signed(&exi_doc.CertificateInstallationReq.ListOfRootCertificateIDs.RootCertificateID.array[i].X509SerialNumber,
+                                                          (int32_t)serial_value,
+                                                          EXI_BASETYPES_UINT32_MAX_OCTETS);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Parse maximum contract certificate chains
+    cJSON* max_chains = cJSON_GetObjectItem(json, "MaximumContractCertificateChains");
+    if (max_chains && max_chains->valueint >= 0 && max_chains->valueint <= 255) {
+        exi_doc.CertificateInstallationReq.MaximumContractCertificateChains = (uint8_t)max_chains->valueint;
+    }
+
+    // Parse prioritized EMA IDs
+    cJSON* ema_ids = cJSON_GetObjectItem(json, "PrioritizedEMAIDs");
+    if (ema_ids) {
+        cJSON* ema_array = cJSON_GetObjectItem(ema_ids, "EMAID");
+        if (ema_array && cJSON_IsArray(ema_array)) {
+            int array_size = cJSON_GetArraySize(ema_array);
+            if (array_size <= iso20_identifierType_8_ARRAY_SIZE) {
+                exi_doc.CertificateInstallationReq.PrioritizedEMAIDs.EMAID.arrayLen = (uint16_t)array_size;
+                for (int i = 0; i < array_size; i++) {
+                    cJSON* ema_item = cJSON_GetArrayItem(ema_array, i);
+                    if (ema_item && ema_item->valuestring) {
+                        size_t len = strlen(ema_item->valuestring);
+                        if (len <= iso20_EMAID_CHARACTER_SIZE) {
+                            memcpy(exi_doc.CertificateInstallationReq.PrioritizedEMAIDs.EMAID.array[i].characters,
+                                  ema_item->valuestring, len);
+                            exi_doc.CertificateInstallationReq.PrioritizedEMAIDs.EMAID.array[i].charactersLen = (uint16_t)len;
+                        }
+                    }
+                }
+                exi_doc.CertificateInstallationReq.PrioritizedEMAIDs_isUsed = 1;
+            }
+        }
+    }
+
+    // Initialize bitstream
+    exi_bitstream_t stream;
+    exi_bitstream_init(&stream, exi_buf, exi_buf_size, 0, NULL);
+
+    // Encode to EXI
+    int ret = encode_iso20_exiDocument(&stream, &exi_doc);
+    if (ret == 0) {
+        *exi_buf_len = stream.byte_pos;
+    }
+
+    // Cleanup
+    cJSON_Delete(json);
+
+    return ret;
 }
 
 int iso20_certificate_installation_req_decode_exi_to_json(const uint8_t* exi_buffer, size_t exi_size, char** json_str) {
-    // TODO: Implement ISO-20 Certificate Installation Request decoding
-    return -1;
+    if (!exi_buffer || !json_str) {
+        return -1;
+    }
+
+    // Initialize bitstream
+    exi_bitstream_t stream;
+    stream.data = (uint8_t*)exi_buffer;
+    stream.data_size = exi_size;
+    stream.byte_pos = 0;
+    stream.bit_count = 0;
+    stream._init_called = 0;
+    stream._flag_byte_pos = 0;
+    stream.status_callback = NULL;
+
+    // Decode EXI
+    struct iso20_exiDocument exi_doc;
+    memset(&exi_doc, 0, sizeof(exi_doc));
+    
+    int errn = decode_iso20_exiDocument(&stream, &exi_doc);
+    if (errn != 0) {
+        return errn;
+    }
+
+    // Create JSON
+    cJSON* root = cJSON_CreateObject();
+    if (!root) {
+        return -3;
+    }
+
+    // Add CertificateInstallationReq fields
+    if (exi_doc.CertificateInstallationReq_isUsed) {
+        struct iso20_CertificateInstallationReqType* cert_req = &exi_doc.CertificateInstallationReq;
+
+        // Add SessionID
+        if (cert_req->Header.SessionID.bytesLen > 0) {
+            char* hex_session_id = binary_to_hex(cert_req->Header.SessionID.bytes,
+                                               cert_req->Header.SessionID.bytesLen);
+            if (hex_session_id) {
+                cJSON_AddStringToObject(root, "SessionID", hex_session_id);
+                free(hex_session_id);
+            }
+        }
+
+        // Add TimeStamp
+        char timestamp_str[32];
+        snprintf(timestamp_str, sizeof(timestamp_str), "%llu", cert_req->Header.TimeStamp);
+        cJSON_AddStringToObject(root, "TimeStamp", timestamp_str);
+
+        // Add OEMProvisioningCertificateChain
+        cJSON* oem_chain = cJSON_CreateObject();
+        if (oem_chain) {
+            cJSON_AddItemToObject(root, "OEMProvisioningCertificateChain", oem_chain);
+
+            // Add Id
+            if (cert_req->OEMProvisioningCertificateChain.Id.charactersLen > 0) {
+                char id[iso20_Id_CHARACTER_SIZE + 1];
+                memcpy(id, cert_req->OEMProvisioningCertificateChain.Id.characters, 
+                       cert_req->OEMProvisioningCertificateChain.Id.charactersLen);
+                id[cert_req->OEMProvisioningCertificateChain.Id.charactersLen] = '\0';
+                cJSON_AddStringToObject(oem_chain, "Id", id);
+            }
+
+            // Add Certificate
+            if (cert_req->OEMProvisioningCertificateChain.Certificate.bytesLen > 0) {
+                char* base64_cert = binary_to_base64(cert_req->OEMProvisioningCertificateChain.Certificate.bytes,
+                                                   cert_req->OEMProvisioningCertificateChain.Certificate.bytesLen);
+                if (base64_cert) {
+                    cJSON_AddStringToObject(oem_chain, "Certificate", base64_cert);
+                    free(base64_cert);
+                }
+            }
+
+            // Add SubCertificates
+            if (cert_req->OEMProvisioningCertificateChain.SubCertificates.Certificate.arrayLen > 0) {
+                cJSON* sub_certs = cJSON_CreateArray();
+                if (sub_certs) {
+                    cJSON_AddItemToObject(oem_chain, "SubCertificates", sub_certs);
+
+                    for (int i = 0; i < cert_req->OEMProvisioningCertificateChain.SubCertificates.Certificate.arrayLen; i++) {
+                        if (cert_req->OEMProvisioningCertificateChain.SubCertificates.Certificate.array[i].bytesLen > 0) {
+                            char* base64_subcert = binary_to_base64(
+                                cert_req->OEMProvisioningCertificateChain.SubCertificates.Certificate.array[i].bytes,
+                                cert_req->OEMProvisioningCertificateChain.SubCertificates.Certificate.array[i].bytesLen);
+                            if (base64_subcert) {
+                                cJSON* cert_obj = cJSON_CreateObject();
+                                if (cert_obj) {
+                                    cJSON_AddStringToObject(cert_obj, "Certificate", base64_subcert);
+                                    cJSON_AddItemToArray(sub_certs, cert_obj);
+                                }
+                                free(base64_subcert);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Add ListOfRootCertificateIDs
+        if (cert_req->ListOfRootCertificateIDs.RootCertificateID.arrayLen > 0) {
+            cJSON* root_certs = cJSON_CreateArray();
+            if (root_certs) {
+                cJSON_AddItemToObject(root, "ListOfRootCertificateIDs", root_certs);
+
+                for (int i = 0; i < cert_req->ListOfRootCertificateIDs.RootCertificateID.arrayLen; i++) {
+                    cJSON* cert = cJSON_CreateObject();
+                    if (cert) {
+                        cJSON_AddItemToArray(root_certs, cert);
+
+                        if (cert_req->ListOfRootCertificateIDs.RootCertificateID.array[i].X509IssuerName.charactersLen > 0) {
+                            char issuer[iso20_X509IssuerName_CHARACTER_SIZE + 1];
+                            memcpy(issuer,
+                                   cert_req->ListOfRootCertificateIDs.RootCertificateID.array[i].X509IssuerName.characters,
+                                   cert_req->ListOfRootCertificateIDs.RootCertificateID.array[i].X509IssuerName.charactersLen);
+                            issuer[cert_req->ListOfRootCertificateIDs.RootCertificateID.array[i].X509IssuerName.charactersLen] = '\0';
+                            cJSON_AddStringToObject(cert, "X509IssuerName", issuer);
+                        }
+
+                        double serial_value = exi_signed_to_double(&cert_req->ListOfRootCertificateIDs.RootCertificateID.array[i].X509SerialNumber);
+                        cJSON_AddNumberToObject(cert, "X509SerialNumber", serial_value);
+                    }
+                }
+            }
+        }
+
+        // Add MaximumContractCertificateChains
+        cJSON_AddNumberToObject(root, "MaximumContractCertificateChains", cert_req->MaximumContractCertificateChains);
+
+        // Add PrioritizedEMAIDs if present
+        if (cert_req->PrioritizedEMAIDs_isUsed && cert_req->PrioritizedEMAIDs.EMAID.arrayLen > 0) {
+            cJSON* emaids = cJSON_CreateArray();
+            if (emaids) {
+                cJSON_AddItemToObject(root, "PrioritizedEMAIDs", emaids);
+
+                for (int i = 0; i < cert_req->PrioritizedEMAIDs.EMAID.arrayLen; i++) {
+                    if (cert_req->PrioritizedEMAIDs.EMAID.array[i].charactersLen > 0) {
+                        char emaid[iso20_EMAID_CHARACTER_SIZE + 1];
+                        memcpy(emaid,
+                               cert_req->PrioritizedEMAIDs.EMAID.array[i].characters,
+                               cert_req->PrioritizedEMAIDs.EMAID.array[i].charactersLen);
+                        emaid[cert_req->PrioritizedEMAIDs.EMAID.array[i].charactersLen] = '\0';
+                        cJSON_AddItemToArray(emaids, cJSON_CreateString(emaid));
+                    }
+                }
+            }
+        }
+    }
+
+    // Convert to string
+    *json_str = cJSON_Print(root);
+    if (!*json_str) {
+        cJSON_Delete(root);
+        return -4;
+    }
+
+    // Cleanup
+    cJSON_Delete(root);
+    return 0;
 }
 
 // ISO-20 Certificate Installation Response stubs
 int iso20_certificate_installation_res_encode_json_to_exi(const char* json_str, uint8_t** exi_buffer, size_t* exi_size) {
-    // TODO: Implement ISO-20 Certificate Installation Response encoding
-    return -1;
+    if (!json_str || !exi_buffer || !exi_size) {
+        return -1;
+    }
+
+    // Parse JSON
+    cJSON* root = cJSON_Parse(json_str);
+    if (!root) {
+        return -2;
+    }
+
+    // Create EXI document
+    struct iso20_exiDocument exi_doc;
+    memset(&exi_doc, 0, sizeof(exi_doc));
+
+    // Set certificate installation response as used
+    exi_doc.CertificateInstallationRes_isUsed = 1;
+
+    // Initialize certificate installation response
+    init_iso20_CertificateInstallationResType(&exi_doc.CertificateInstallationRes);
+
+    // Get SessionID from JSON
+    cJSON* session_id = cJSON_GetObjectItem(root, "SessionID");
+    if (session_id && session_id->valuestring) {
+        size_t len = strlen(session_id->valuestring);
+        if (len <= iso20_sessionIDType_BYTES_SIZE) {
+            memcpy(exi_doc.CertificateInstallationRes.Header.SessionID.bytes, session_id->valuestring, len);
+            exi_doc.CertificateInstallationRes.Header.SessionID.bytesLen = (uint16_t)len;
+        }
+    }
+
+    // Get TimeStamp from JSON
+    cJSON* timestamp = cJSON_GetObjectItem(root, "TimeStamp");
+    if (timestamp && timestamp->valuestring) {
+        exi_doc.CertificateInstallationRes.Header.TimeStamp = (uint64_t)atoll(timestamp->valuestring);
+    }
+
+    // Get ResponseCode from JSON
+    cJSON* response_code = cJSON_GetObjectItem(root, "ResponseCode");
+    if (response_code && response_code->valuestring) {
+        // Convert string response code to enum value
+        if (strcmp(response_code->valuestring, "OK") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_OK;
+        } else if (strcmp(response_code->valuestring, "OK_CertificateExpiresSoon") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_OK_CertificateExpiresSoon;
+        } else if (strcmp(response_code->valuestring, "OK_NewSessionEstablished") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_OK_NewSessionEstablished;
+        } else if (strcmp(response_code->valuestring, "OK_OldSessionJoined") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_OK_OldSessionJoined;
+        } else if (strcmp(response_code->valuestring, "OK_PowerToleranceConfirmed") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_OK_PowerToleranceConfirmed;
+        } else if (strcmp(response_code->valuestring, "WARNING_AuthorizationSelectionInvalid") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_WARNING_AuthorizationSelectionInvalid;
+        } else if (strcmp(response_code->valuestring, "WARNING_CertificateExpired") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_WARNING_CertificateExpired;
+        } else if (strcmp(response_code->valuestring, "WARNING_CertificateNotYetValid") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_WARNING_CertificateNotYetValid;
+        } else if (strcmp(response_code->valuestring, "WARNING_CertificateRevoked") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_WARNING_CertificateRevoked;
+        } else if (strcmp(response_code->valuestring, "WARNING_CertificateValidationError") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_WARNING_CertificateValidationError;
+        } else if (strcmp(response_code->valuestring, "WARNING_ChallengeInvalid") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_WARNING_ChallengeInvalid;
+        } else if (strcmp(response_code->valuestring, "WARNING_EIMAuthorizationFailure") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_WARNING_EIMAuthorizationFailure;
+        } else if (strcmp(response_code->valuestring, "WARNING_eMSPUnknown") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_WARNING_eMSPUnknown;
+        } else if (strcmp(response_code->valuestring, "WARNING_EVPowerProfileViolation") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_WARNING_EVPowerProfileViolation;
+        } else if (strcmp(response_code->valuestring, "WARNING_GeneralPnCAuthorizationError") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_WARNING_GeneralPnCAuthorizationError;
+        } else if (strcmp(response_code->valuestring, "WARNING_NoCertificateAvailable") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_WARNING_NoCertificateAvailable;
+        } else if (strcmp(response_code->valuestring, "WARNING_NoContractMatchingPCIDFound") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_WARNING_NoContractMatchingPCIDFound;
+        } else if (strcmp(response_code->valuestring, "WARNING_PowerToleranceNotConfirmed") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_WARNING_PowerToleranceNotConfirmed;
+        } else if (strcmp(response_code->valuestring, "WARNING_ScheduleRenegotiationFailed") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_WARNING_ScheduleRenegotiationFailed;
+        } else if (strcmp(response_code->valuestring, "WARNING_StandbyNotAllowed") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_WARNING_StandbyNotAllowed;
+        } else if (strcmp(response_code->valuestring, "WARNING_WPT") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_WARNING_WPT;
+        } else if (strcmp(response_code->valuestring, "FAILED") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_FAILED;
+        } else if (strcmp(response_code->valuestring, "FAILED_AssociationError") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_FAILED_AssociationError;
+        } else if (strcmp(response_code->valuestring, "FAILED_ContactorError") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_FAILED_ContactorError;
+        } else if (strcmp(response_code->valuestring, "FAILED_EVPowerProfileInvalid") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_FAILED_EVPowerProfileInvalid;
+        } else if (strcmp(response_code->valuestring, "FAILED_EVPowerProfileViolation") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_FAILED_EVPowerProfileViolation;
+        } else if (strcmp(response_code->valuestring, "FAILED_MeteringSignatureNotValid") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_FAILED_MeteringSignatureNotValid;
+        } else if (strcmp(response_code->valuestring, "FAILED_NoEnergyTransferServiceSelected") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_FAILED_NoEnergyTransferServiceSelected;
+        } else if (strcmp(response_code->valuestring, "FAILED_NoServiceRenegotiationSupported") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_FAILED_NoServiceRenegotiationSupported;
+        } else if (strcmp(response_code->valuestring, "FAILED_PauseNotAllowed") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_FAILED_PauseNotAllowed;
+        } else if (strcmp(response_code->valuestring, "FAILED_PowerDeliveryNotApplied") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_FAILED_PowerDeliveryNotApplied;
+        } else if (strcmp(response_code->valuestring, "FAILED_PowerToleranceNotConfirmed") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_FAILED_PowerToleranceNotConfirmed;
+        } else if (strcmp(response_code->valuestring, "FAILED_ScheduleRenegotiation") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_FAILED_ScheduleRenegotiation;
+        } else if (strcmp(response_code->valuestring, "FAILED_ScheduleSelectionInvalid") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_FAILED_ScheduleSelectionInvalid;
+        } else if (strcmp(response_code->valuestring, "FAILED_SequenceError") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_FAILED_SequenceError;
+        } else if (strcmp(response_code->valuestring, "FAILED_ServiceIDInvalid") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_FAILED_ServiceIDInvalid;
+        } else if (strcmp(response_code->valuestring, "FAILED_ServiceSelectionInvalid") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_FAILED_ServiceSelectionInvalid;
+        } else if (strcmp(response_code->valuestring, "FAILED_SignatureError") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_FAILED_SignatureError;
+        } else if (strcmp(response_code->valuestring, "FAILED_UnknownSession") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_FAILED_UnknownSession;
+        } else if (strcmp(response_code->valuestring, "FAILED_WrongChargeParameter") == 0) {
+            exi_doc.CertificateInstallationRes.ResponseCode = iso20_responseCodeType_FAILED_WrongChargeParameter;
+        }
+    }
+
+    // Get EVSEProcessing from JSON
+    cJSON* evse_processing = cJSON_GetObjectItem(root, "EVSEProcessing");
+    if (evse_processing && evse_processing->valuestring) {
+        if (strcmp(evse_processing->valuestring, "Finished") == 0) {
+            exi_doc.CertificateInstallationRes.EVSEProcessing = iso20_processingType_Finished;
+        } else if (strcmp(evse_processing->valuestring, "Ongoing") == 0) {
+            exi_doc.CertificateInstallationRes.EVSEProcessing = iso20_processingType_Ongoing;
+        } else if (strcmp(evse_processing->valuestring, "Ongoing_WaitingForCustomerInteraction") == 0) {
+            exi_doc.CertificateInstallationRes.EVSEProcessing = iso20_processingType_Ongoing_WaitingForCustomerInteraction;
+        }
+    }
+
+    // Get CPSCertificateChain from JSON
+    cJSON* cps_cert = cJSON_GetObjectItem(root, "CPSCertificateChain");
+    if (cps_cert) {
+        // Get Certificate
+        cJSON* cert = cJSON_GetObjectItem(cps_cert, "Certificate");
+        if (cert && cert->valuestring) {
+            size_t len = strlen(cert->valuestring);
+            if (len <= iso20_certificateType_BYTES_SIZE) {
+                memcpy(exi_doc.CertificateInstallationRes.CPSCertificateChain.Certificate.bytes, cert->valuestring, len);
+                exi_doc.CertificateInstallationRes.CPSCertificateChain.Certificate.bytesLen = (uint16_t)len;
+            }
+        }
+
+        // Get SubCertificates
+        cJSON* sub_certs = cJSON_GetObjectItem(cps_cert, "SubCertificates");
+        if (sub_certs && cJSON_IsArray(sub_certs)) {
+            int array_len = cJSON_GetArraySize(sub_certs);
+            if (array_len > 0 && array_len <= iso20_certificateType_3_ARRAY_SIZE) {
+                exi_doc.CertificateInstallationRes.CPSCertificateChain.SubCertificates.Certificate.arrayLen = array_len;
+                for (int i = 0; i < array_len; i++) {
+                    cJSON* sub_cert = cJSON_GetArrayItem(sub_certs, i);
+                    if (sub_cert) {
+                        cJSON* cert = cJSON_GetObjectItem(sub_cert, "Certificate");
+                        if (cert && cert->valuestring) {
+                            size_t len = strlen(cert->valuestring);
+                            if (len <= iso20_certificateType_BYTES_SIZE) {
+                                memcpy(exi_doc.CertificateInstallationRes.CPSCertificateChain.SubCertificates.Certificate.array[i].bytes, 
+                                      cert->valuestring, len);
+                                exi_doc.CertificateInstallationRes.CPSCertificateChain.SubCertificates.Certificate.array[i].bytesLen = (uint16_t)len;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Get SignedInstallationData from JSON
+    cJSON* signed_data = cJSON_GetObjectItem(root, "SignedInstallationData");
+    if (signed_data) {
+        // Get Id
+        cJSON* id = cJSON_GetObjectItem(signed_data, "Id");
+        if (id && id->valuestring) {
+            size_t len = strlen(id->valuestring);
+            if (len <= iso20_Id_CHARACTER_SIZE) {
+                memcpy(exi_doc.CertificateInstallationRes.SignedInstallationData.Id.characters, id->valuestring, len);
+                exi_doc.CertificateInstallationRes.SignedInstallationData.Id.charactersLen = (uint16_t)len;
+            }
+        }
+
+        // Get Value
+        cJSON* value = cJSON_GetObjectItem(signed_data, "Value");
+        if (value && value->valuestring) {
+            size_t len = strlen(value->valuestring);
+            if (len <= iso20_SignedInstallationDataType_BYTES_SIZE) {
+                memcpy(exi_doc.CertificateInstallationRes.SignedInstallationData.CONTENT.bytes, value->valuestring, len);
+                exi_doc.CertificateInstallationRes.SignedInstallationData.CONTENT.bytesLen = (uint16_t)len;
+            }
+        }
+    }
+
+    // Get RemainingContractCertificateChains from JSON
+    cJSON* remaining_chains = cJSON_GetObjectItem(root, "RemainingContractCertificateChains");
+    if (remaining_chains && cJSON_IsNumber(remaining_chains)) {
+        exi_doc.CertificateInstallationRes.RemainingContractCertificateChains = (uint8_t)remaining_chains->valueint;
+    }
+
+    // Initialize bitstream
+    exi_bitstream_t stream;
+    stream.data = NULL;
+    stream.data_size = 0;
+    stream.byte_pos = 0;
+    stream.bit_count = 0;
+    stream._init_called = 0;
+    stream._flag_byte_pos = 0;
+    stream.status_callback = NULL;
+
+    // Encode to EXI
+    int err = encode_iso20_exiDocument(&stream, &exi_doc);
+    if (err != 0) {
+        cJSON_Delete(root);
+        return err;
+    }
+
+    // Get the encoded data
+    *exi_size = exi_bitstream_get_length(&stream);
+    *exi_buffer = (uint8_t*)malloc(*exi_size);
+    if (!*exi_buffer) {
+        cJSON_Delete(root);
+        return -3;
+    }
+
+    memcpy(*exi_buffer, stream.data, *exi_size);
+
+    // Cleanup
+    cJSON_Delete(root);
+    return 0;
 }
 
 int iso20_certificate_installation_res_decode_exi_to_json(const uint8_t* exi_buffer, size_t exi_size, char** json_str) {
-    // TODO: Implement ISO-20 Certificate Installation Response decoding
-    return -1;
+    if (!exi_buffer || !json_str) {
+        return -1;
+    }
+
+    // Initialize bitstream
+    exi_bitstream_t stream;
+    stream.data = (uint8_t*)exi_buffer;
+    stream.data_size = exi_size;
+    stream.byte_pos = 0;
+    stream.bit_count = 0;
+    stream._init_called = 0;
+    stream._flag_byte_pos = 0;
+    stream.status_callback = NULL;
+
+    // Decode EXI
+    struct iso20_exiDocument exi_doc;
+    memset(&exi_doc, 0, sizeof(exi_doc));
+    
+    int errn = decode_iso20_exiDocument(&stream, &exi_doc);
+    if (errn != 0) {
+        return errn;
+    }
+
+    // Create JSON
+    cJSON* root = cJSON_CreateObject();
+    if (!root) {
+        return -3;
+    }
+
+    // Add CertificateInstallationRes fields
+    if (exi_doc.CertificateInstallationRes_isUsed) {
+        struct iso20_CertificateInstallationResType* cert_res = &exi_doc.CertificateInstallationRes;
+
+        // Add SessionID
+        if (exi_doc.CertificateInstallationRes.Header.SessionID.bytesLen > 0) {
+            char* hex_session_id = binary_to_hex(exi_doc.CertificateInstallationRes.Header.SessionID.bytes,
+                                               exi_doc.CertificateInstallationRes.Header.SessionID.bytesLen);
+            if (hex_session_id) {
+                cJSON_AddStringToObject(root, "SessionID", hex_session_id);
+                free(hex_session_id);
+            }
+        }
+
+        // Add TimeStamp
+        char timestamp_str[32];
+        snprintf(timestamp_str, sizeof(timestamp_str), "%llu", cert_res->Header.TimeStamp);
+        cJSON_AddStringToObject(root, "TimeStamp", timestamp_str);
+
+        // Add ResponseCode
+        const char* response_code_str = NULL;
+        switch (cert_res->ResponseCode) {
+            case iso20_responseCodeType_OK:
+                response_code_str = "OK";
+                break;
+            case iso20_responseCodeType_OK_CertificateExpiresSoon:
+                response_code_str = "OK_CertificateExpiresSoon";
+                break;
+            case iso20_responseCodeType_OK_NewSessionEstablished:
+                response_code_str = "OK_NewSessionEstablished";
+                break;
+            case iso20_responseCodeType_OK_OldSessionJoined:
+                response_code_str = "OK_OldSessionJoined";
+                break;
+            case iso20_responseCodeType_OK_PowerToleranceConfirmed:
+                response_code_str = "OK_PowerToleranceConfirmed";
+                break;
+            case iso20_responseCodeType_WARNING_AuthorizationSelectionInvalid:
+                response_code_str = "WARNING_AuthorizationSelectionInvalid";
+                break;
+            case iso20_responseCodeType_WARNING_CertificateExpired:
+                response_code_str = "WARNING_CertificateExpired";
+                break;
+            case iso20_responseCodeType_WARNING_CertificateNotYetValid:
+                response_code_str = "WARNING_CertificateNotYetValid";
+                break;
+            case iso20_responseCodeType_WARNING_CertificateRevoked:
+                response_code_str = "WARNING_CertificateRevoked";
+                break;
+            case iso20_responseCodeType_WARNING_CertificateValidationError:
+                response_code_str = "WARNING_CertificateValidationError";
+                break;
+            case iso20_responseCodeType_WARNING_ChallengeInvalid:
+                response_code_str = "WARNING_ChallengeInvalid";
+                break;
+            case iso20_responseCodeType_WARNING_EIMAuthorizationFailure:
+                response_code_str = "WARNING_EIMAuthorizationFailure";
+                break;
+            case iso20_responseCodeType_WARNING_eMSPUnknown:
+                response_code_str = "WARNING_eMSPUnknown";
+                break;
+            case iso20_responseCodeType_WARNING_EVPowerProfileViolation:
+                response_code_str = "WARNING_EVPowerProfileViolation";
+                break;
+            case iso20_responseCodeType_WARNING_GeneralPnCAuthorizationError:
+                response_code_str = "WARNING_GeneralPnCAuthorizationError";
+                break;
+            case iso20_responseCodeType_WARNING_NoCertificateAvailable:
+                response_code_str = "WARNING_NoCertificateAvailable";
+                break;
+            case iso20_responseCodeType_WARNING_NoContractMatchingPCIDFound:
+                response_code_str = "WARNING_NoContractMatchingPCIDFound";
+                break;
+            case iso20_responseCodeType_WARNING_PowerToleranceNotConfirmed:
+                response_code_str = "WARNING_PowerToleranceNotConfirmed";
+                break;
+            case iso20_responseCodeType_WARNING_ScheduleRenegotiationFailed:
+                response_code_str = "WARNING_ScheduleRenegotiationFailed";
+                break;
+            case iso20_responseCodeType_WARNING_StandbyNotAllowed:
+                response_code_str = "WARNING_StandbyNotAllowed";
+                break;
+            case iso20_responseCodeType_WARNING_WPT:
+                response_code_str = "WARNING_WPT";
+                break;
+            case iso20_responseCodeType_FAILED:
+                response_code_str = "FAILED";
+                break;
+            case iso20_responseCodeType_FAILED_AssociationError:
+                response_code_str = "FAILED_AssociationError";
+                break;
+            case iso20_responseCodeType_FAILED_ContactorError:
+                response_code_str = "FAILED_ContactorError";
+                break;
+            case iso20_responseCodeType_FAILED_EVPowerProfileInvalid:
+                response_code_str = "FAILED_EVPowerProfileInvalid";
+                break;
+            case iso20_responseCodeType_FAILED_EVPowerProfileViolation:
+                response_code_str = "FAILED_EVPowerProfileViolation";
+                break;
+            case iso20_responseCodeType_FAILED_MeteringSignatureNotValid:
+                response_code_str = "FAILED_MeteringSignatureNotValid";
+                break;
+            case iso20_responseCodeType_FAILED_NoEnergyTransferServiceSelected:
+                response_code_str = "FAILED_NoEnergyTransferServiceSelected";
+                break;
+            case iso20_responseCodeType_FAILED_NoServiceRenegotiationSupported:
+                response_code_str = "FAILED_NoServiceRenegotiationSupported";
+                break;
+            case iso20_responseCodeType_FAILED_PauseNotAllowed:
+                response_code_str = "FAILED_PauseNotAllowed";
+                break;
+            case iso20_responseCodeType_FAILED_PowerDeliveryNotApplied:
+                response_code_str = "FAILED_PowerDeliveryNotApplied";
+                break;
+            case iso20_responseCodeType_FAILED_PowerToleranceNotConfirmed:
+                response_code_str = "FAILED_PowerToleranceNotConfirmed";
+                break;
+            case iso20_responseCodeType_FAILED_ScheduleRenegotiation:
+                response_code_str = "FAILED_ScheduleRenegotiation";
+                break;
+            case iso20_responseCodeType_FAILED_ScheduleSelectionInvalid:
+                response_code_str = "FAILED_ScheduleSelectionInvalid";
+                break;
+            case iso20_responseCodeType_FAILED_SequenceError:
+                response_code_str = "FAILED_SequenceError";
+                break;
+            case iso20_responseCodeType_FAILED_ServiceIDInvalid:
+                response_code_str = "FAILED_ServiceIDInvalid";
+                break;
+            case iso20_responseCodeType_FAILED_ServiceSelectionInvalid:
+                response_code_str = "FAILED_ServiceSelectionInvalid";
+                break;
+            case iso20_responseCodeType_FAILED_SignatureError:
+                response_code_str = "FAILED_SignatureError";
+                break;
+            case iso20_responseCodeType_FAILED_UnknownSession:
+                response_code_str = "FAILED_UnknownSession";
+                break;
+            case iso20_responseCodeType_FAILED_WrongChargeParameter:
+                response_code_str = "FAILED_WrongChargeParameter";
+                break;
+            default:
+                response_code_str = "FAILED";
+                break;
+        }
+        cJSON_AddStringToObject(root, "ResponseCode", response_code_str);
+
+        // Add CPSCertificateChain
+        if (cert_res->CPSCertificateChain.Certificate.bytesLen > 0) {
+            cJSON* cps_chain = cJSON_CreateObject();
+            if (cps_chain) {
+                cJSON_AddItemToObject(root, "CPSCertificateChain", cps_chain);
+
+                // Add Certificate
+                char* base64_cert = binary_to_base64(cert_res->CPSCertificateChain.Certificate.bytes,
+                                                   cert_res->CPSCertificateChain.Certificate.bytesLen);
+                if (base64_cert) {
+                    cJSON_AddStringToObject(cps_chain, "Certificate", base64_cert);
+                    free(base64_cert);
+                }
+
+                // Add SubCertificates
+                if (cert_res->CPSCertificateChain.SubCertificates.Certificate.arrayLen > 0) {
+                    cJSON* sub_certs = cJSON_CreateArray();
+                    if (sub_certs) {
+                        cJSON_AddItemToObject(cps_chain, "SubCertificates", sub_certs);
+
+                        for (int i = 0; i < cert_res->CPSCertificateChain.SubCertificates.Certificate.arrayLen; i++) {
+                            char* base64_subcert = binary_to_base64(
+                                cert_res->CPSCertificateChain.SubCertificates.Certificate.array[i].bytes,
+                                cert_res->CPSCertificateChain.SubCertificates.Certificate.array[i].bytesLen);
+                            if (base64_subcert) {
+                                cJSON* cert_obj = cJSON_CreateObject();
+                                if (cert_obj) {
+                                    cJSON_AddStringToObject(cert_obj, "Certificate", base64_subcert);
+                                    cJSON_AddItemToArray(sub_certs, cert_obj);
+                                }
+                                free(base64_subcert);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Add SignedInstallationData
+        cJSON* signed_data = cJSON_CreateObject();
+        if (signed_data) {
+            cJSON_AddItemToObject(root, "SignedInstallationData", signed_data);
+
+            // Add Id
+            if (cert_res->SignedInstallationData.Id.charactersLen > 0) {
+                char id[iso20_Id_CHARACTER_SIZE + 1];
+                memcpy(id, cert_res->SignedInstallationData.Id.characters,
+                       cert_res->SignedInstallationData.Id.charactersLen);
+                id[cert_res->SignedInstallationData.Id.charactersLen] = '\0';
+                cJSON_AddStringToObject(signed_data, "Id", id);
+            }
+
+            // Add CONTENT
+            if (cert_res->SignedInstallationData.CONTENT.bytesLen > 0) {
+                char* base64_content = binary_to_base64(cert_res->SignedInstallationData.CONTENT.bytes,
+                                                      cert_res->SignedInstallationData.CONTENT.bytesLen);
+                if (base64_content) {
+                    cJSON_AddStringToObject(signed_data, "Value", base64_content);
+                    free(base64_content);
+                }
+            }
+        }
+
+        // Add RemainingContractCertificateChains
+        cJSON_AddNumberToObject(root, "RemainingContractCertificateChains", cert_res->RemainingContractCertificateChains);
+    }
+
+    // Convert to string
+    *json_str = cJSON_Print(root);
+    if (!*json_str) {
+        cJSON_Delete(root);
+        return -4;
+    }
+
+    // Cleanup
+    cJSON_Delete(root);
+    return 0;
 } 
