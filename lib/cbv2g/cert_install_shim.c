@@ -419,12 +419,19 @@ int iso2_certificate_installation_res_encode_json_to_exi(const char* json_str, u
     // Get SessionID from JSON
     cJSON* session_id = cJSON_GetObjectItem(root, "SessionID");
     if (session_id && session_id->valuestring) {
-        size_t len = strlen(session_id->valuestring);
-        exi_doc.V2G_Message.Header.SessionID.bytesLen = iso2_sessionIDType_BYTES_SIZE; // Always 8
-        memset(exi_doc.V2G_Message.Header.SessionID.bytes, 0, iso2_sessionIDType_BYTES_SIZE); // Zero out
-        memcpy(exi_doc.V2G_Message.Header.SessionID.bytes, session_id->valuestring, len > iso2_sessionIDType_BYTES_SIZE ? iso2_sessionIDType_BYTES_SIZE : len); // Copy up to 8
-
+        uint8_t* binary_session_id;
+        size_t session_id_len;
+        if (hex_to_binary(session_id->valuestring, &binary_session_id, &session_id_len) == 0) {
+            exi_doc.V2G_Message.Header.SessionID.bytesLen = (uint16_t)session_id_len;
+            memcpy(exi_doc.V2G_Message.Header.SessionID.bytes, binary_session_id, session_id_len);
+            free(binary_session_id);
+        } else {
+            // Default to zero session ID if hex conversion fails
+            exi_doc.V2G_Message.Header.SessionID.bytesLen = iso2_sessionIDType_BYTES_SIZE;
+            memset(exi_doc.V2G_Message.Header.SessionID.bytes, 0, iso2_sessionIDType_BYTES_SIZE);
+        }
     } else {
+        // Default to zero session ID if not provided
         exi_doc.V2G_Message.Header.SessionID.bytesLen = iso2_sessionIDType_BYTES_SIZE;
         memset(exi_doc.V2G_Message.Header.SessionID.bytes, 0, iso2_sessionIDType_BYTES_SIZE);
     }
